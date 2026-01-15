@@ -181,6 +181,63 @@ pub fn CachedTableReader::get_int32(Self, Int, Int) -> Int
 pub fn CachedTableReader::get_string(Self, Int, String) -> String
 pub fn CachedTableReader::new(Table) -> Self
 
+pub struct CallOptions {
+  timeout_ms : Int?
+  metadata : Metadata
+  compression : Bool
+}
+pub fn CallOptions::new() -> Self
+pub fn CallOptions::with_compression(Self, Bool) -> Self
+pub fn CallOptions::with_metadata(Self, Metadata) -> Self
+pub fn CallOptions::with_timeout(Self, Int) -> Self
+
+pub struct Channel {
+  target : String
+  mut state : ChannelState
+  codec : FlatBuffersCodec
+}
+pub fn Channel::connect(Self) -> Unit
+pub fn Channel::get_state(Self) -> ChannelState
+pub fn Channel::get_target(Self) -> String
+pub fn Channel::new(String) -> Self
+pub fn Channel::shutdown(Self) -> Unit
+
+pub(all) enum ChannelState {
+  Idle
+  Connecting
+  Ready
+  TransientFailure
+  Shutdown
+}
+pub impl Eq for ChannelState
+pub impl Show for ChannelState
+
+pub struct ClientContext {
+  metadata : Metadata
+  response_headers : Metadata
+  response_trailers : Metadata
+  options : CallOptions
+}
+pub fn ClientContext::add_metadata(Self, String, String) -> Self
+pub fn ClientContext::new() -> Self
+pub fn ClientContext::with_metadata(Self, Metadata) -> Self
+pub fn ClientContext::with_options(Self, CallOptions) -> Self
+
+pub struct ClientInterceptor {
+  on_request : (ClientContext, FixedArray[Byte]) -> FixedArray[Byte]
+  on_response : (ClientContext, FixedArray[Byte]) -> FixedArray[Byte]
+}
+pub fn ClientInterceptor::new((ClientContext, FixedArray[Byte]) -> FixedArray[Byte], (ClientContext, FixedArray[Byte]) -> FixedArray[Byte]) -> Self
+
+pub struct ClientStream[T] {
+  write_fn : (T) -> Bool
+  close_fn : () -> Unit
+  mut closed : Bool
+}
+pub fn[T] ClientStream::close(Self[T]) -> Unit
+pub fn[T] ClientStream::new((T) -> Bool, () -> Unit) -> Self[T]
+pub fn[T] ClientStream::write(Self[T], T) -> Bool
+
 pub struct EnumAst {
   name : String
   base_type : ScalarType
@@ -258,6 +315,14 @@ pub enum FieldTypeAst {
   Vector(FieldTypeAst)
   Reference(String)
 }
+
+pub struct FlatBuffersCodec {
+  content_type : String
+}
+pub fn FlatBuffersCodec::decode(Self, FixedArray[Byte]) -> ByteBuffer
+pub fn FlatBuffersCodec::encode(Self, Builder) -> FixedArray[Byte]
+pub fn FlatBuffersCodec::get_content_type(Self) -> String
+pub fn FlatBuffersCodec::new() -> Self
 
 pub struct FlexBuilder {
   buf : Array[Byte]
@@ -360,6 +425,47 @@ pub fn FlexValue::string_ref(Int, Int) -> Self
 pub fn FlexValue::uint(UInt64) -> Self
 pub fn FlexValue::vector_ref(Int, FlexType, Int) -> Self
 
+pub struct GrpcError {
+  status : GrpcStatus
+  message : String
+  metadata : Metadata
+}
+pub fn GrpcError::new(GrpcStatus, String) -> Self
+pub fn GrpcError::with_metadata(GrpcStatus, String, Metadata) -> Self
+pub impl Show for GrpcError
+
+pub(all) enum GrpcStatus {
+  Ok
+  Cancelled
+  Unknown
+  InvalidArgument
+  DeadlineExceeded
+  NotFound
+  AlreadyExists
+  PermissionDenied
+  ResourceExhausted
+  FailedPrecondition
+  Aborted
+  OutOfRange
+  Unimplemented
+  Internal
+  Unavailable
+  DataLoss
+  Unauthenticated
+}
+pub fn GrpcStatus::code(Self) -> Int
+pub fn GrpcStatus::from_code(Int) -> Self
+pub impl Eq for GrpcStatus
+pub impl Show for GrpcStatus
+
+pub struct HealthService {
+  status_map : Array[(String, ServingStatus)]
+}
+pub fn HealthService::check(Self, String) -> ServingStatus
+pub fn HealthService::clear_status(Self, String) -> Unit
+pub fn HealthService::new() -> Self
+pub fn HealthService::set_status(Self, String, ServingStatus) -> Unit
+
 pub struct JsonObjectBuilder {
   fields : Array[(String, JsonValue)]
 }
@@ -409,6 +515,44 @@ pub struct KeyValue {
 pub fn KeyValue::key(Self) -> String
 pub fn KeyValue::new(ByteBuffer, Int) -> Self
 pub fn KeyValue::value(Self) -> String
+
+pub struct MessageFrame {
+  compressed : Bool
+  length : Int
+  data : FixedArray[Byte]
+}
+pub fn MessageFrame::decode(FixedArray[Byte]) -> Self?
+pub fn MessageFrame::encode(Self) -> FixedArray[Byte]
+pub fn MessageFrame::new(FixedArray[Byte], Bool) -> Self
+
+pub struct Metadata {
+  entries : Array[(String, String)]
+}
+pub fn Metadata::add(Self, String, String) -> Self
+pub fn Metadata::get(Self, String) -> String?
+pub fn Metadata::get_all(Self, String) -> Array[String]
+pub fn Metadata::is_empty(Self) -> Bool
+pub fn Metadata::len(Self) -> Int
+pub fn Metadata::new() -> Self
+pub fn Metadata::remove(Self, String) -> Self
+
+pub struct MethodDescriptor {
+  service_name : String
+  method_name : String
+  method_type : MethodType
+  full_path : String
+}
+pub fn MethodDescriptor::new(String, String, MethodType) -> Self
+pub impl Show for MethodDescriptor
+
+pub(all) enum MethodType {
+  Unary
+  ServerStreaming
+  ClientStreaming
+  BidirectionalStreaming
+}
+pub impl Eq for MethodType
+pub impl Show for MethodType
 
 pub struct ObjectBuilder {
   builder : Builder
@@ -502,6 +646,14 @@ pub fn ReflectionSchema::objects(Self, Int) -> ReflectionObject?
 pub fn ReflectionSchema::objects_length(Self) -> Int
 pub fn ReflectionSchema::root_table(Self) -> ReflectionObject?
 
+pub struct ReflectionService {
+  services : Array[ServiceDescriptor]
+}
+pub fn ReflectionService::get_service(Self, String) -> ServiceDescriptor?
+pub fn ReflectionService::list_services(Self) -> Array[String]
+pub fn ReflectionService::new() -> Self
+pub fn ReflectionService::register(Self, ServiceDescriptor) -> Unit
+
 pub struct ReflectionType {
   buf : ByteBuffer
   pos : Int
@@ -542,6 +694,54 @@ pub struct SchemaAst {
   mut root_type : String?
 }
 pub fn SchemaAst::new() -> Self
+
+pub struct ServerContext {
+  metadata : Metadata
+  response_headers : Metadata
+  response_trailers : Metadata
+  deadline : Int64?
+  peer : String
+  cancelled : Bool
+}
+pub fn ServerContext::is_cancelled(Self) -> Bool
+pub fn ServerContext::new() -> Self
+pub fn ServerContext::set_header(Self, String, String) -> Unit
+pub fn ServerContext::set_trailer(Self, String, String) -> Unit
+pub fn ServerContext::with_deadline(Self, Int64) -> Self
+pub fn ServerContext::with_metadata(Self, Metadata) -> Self
+pub fn ServerContext::with_peer(Self, String) -> Self
+
+pub struct ServerInterceptor {
+  on_request : (ServerContext, FixedArray[Byte]) -> FixedArray[Byte]
+  on_response : (ServerContext, FixedArray[Byte]) -> FixedArray[Byte]
+}
+pub fn ServerInterceptor::new((ServerContext, FixedArray[Byte]) -> FixedArray[Byte], (ServerContext, FixedArray[Byte]) -> FixedArray[Byte]) -> Self
+
+pub struct ServerStream[T] {
+  read_fn : () -> T?
+  mut done : Bool
+}
+pub fn[T] ServerStream::new(() -> T?) -> Self[T]
+pub fn[T] ServerStream::read(Self[T]) -> T?
+
+pub struct ServiceDescriptor {
+  name : String
+  methods : Array[MethodDescriptor]
+}
+pub fn ServiceDescriptor::add_method(Self, MethodDescriptor) -> Self
+pub fn ServiceDescriptor::get_method(Self, String) -> MethodDescriptor?
+pub fn ServiceDescriptor::new(String) -> Self
+pub impl Show for ServiceDescriptor
+
+pub(all) enum ServingStatus {
+  Unknown
+  Serving
+  NotServing
+  ServiceUnknown
+}
+pub fn ServingStatus::to_int(Self) -> Int
+pub impl Eq for ServingStatus
+pub impl Show for ServingStatus
 
 pub struct StructAst {
   name : String

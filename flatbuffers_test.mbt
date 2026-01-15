@@ -1779,3 +1779,319 @@ test "Get vector bytes slice" {
   inspect(slice[0].to_int(), content="1")
   inspect(slice[4].to_int(), content="5")
 }
+
+// =============================================================================
+// gRPC Tests
+// =============================================================================
+
+///|
+test "GrpcStatus code conversion" {
+  inspect(@flatbuffers.GrpcStatus::Ok.code(), content="0")
+  inspect(@flatbuffers.GrpcStatus::InvalidArgument.code(), content="3")
+  inspect(@flatbuffers.GrpcStatus::Internal.code(), content="13")
+  inspect(@flatbuffers.GrpcStatus::Unauthenticated.code(), content="16")
+  // Round-trip
+  inspect(@flatbuffers.GrpcStatus::from_code(5), content="NotFound")
+  inspect(@flatbuffers.GrpcStatus::from_code(12), content="Unimplemented")
+  inspect(@flatbuffers.GrpcStatus::from_code(99), content="Unknown")
+}
+
+///|
+test "Metadata operations" {
+  let meta = @flatbuffers.Metadata::new()
+  let _ = meta.add("key1", "value1")
+  let _ = meta.add("key2", "value2")
+  let _ = meta.add("key1", "value1b")
+  inspect(meta.len(), content="3")
+  inspect(meta.get("key1"), content="Some(\"value1\")")
+  inspect(meta.get("key2"), content="Some(\"value2\")")
+  inspect(meta.get("missing"), content="None")
+  inspect(meta.get_all("key1").length(), content="2")
+  let meta2 = meta.remove("key1")
+  inspect(meta2.len(), content="1")
+  inspect(meta2.get("key1"), content="None")
+}
+
+///|
+test "GrpcError creation" {
+  let err = @flatbuffers.GrpcError::new(
+    @flatbuffers.GrpcStatus::NotFound,
+    "Resource not found",
+  )
+  inspect(err.status, content="NotFound")
+  inspect(err.message, content="Resource not found")
+  inspect(err.metadata.is_empty(), content="true")
+  let meta = @flatbuffers.Metadata::new()
+  let _ = meta.add("debug-info", "some details")
+  let err2 = @flatbuffers.GrpcError::with_metadata(
+    @flatbuffers.GrpcStatus::Internal,
+    "Server error",
+    meta,
+  )
+  inspect(err2.metadata.len(), content="1")
+}
+
+///|
+test "CallOptions configuration" {
+  let opts = @flatbuffers.CallOptions::new()
+    .with_timeout(5000)
+    .with_compression(true)
+  inspect(opts.timeout_ms, content="Some(5000)")
+  inspect(opts.compression, content="true")
+  let meta = @flatbuffers.Metadata::new()
+  let _ = meta.add("auth", "token123")
+  let opts2 = opts.with_metadata(meta)
+  inspect(opts2.metadata.len(), content="1")
+}
+
+///|
+test "FlatBuffersCodec encode/decode" {
+  let codec = @flatbuffers.FlatBuffersCodec::new()
+  inspect(codec.get_content_type(), content="application/x-flatbuffers")
+  // Build a simple table
+  let builder = @flatbuffers.Builder::new()
+  let name = builder.create_string("Test")
+  builder.start_object(1)
+  builder.add_offset(0, name)
+  let root = builder.end_object()
+  builder.finish(root)
+  // Encode
+  let encoded = codec.encode(builder)
+  assert_true(encoded.length() > 0)
+  // Decode
+  let buf = codec.decode(encoded)
+  let table = @flatbuffers.Table::get_root(buf)
+  inspect(table.get_string(0, ""), content="Test")
+}
+
+///|
+test "MessageFrame encode/decode" {
+  let data : FixedArray[Byte] = [b'\x01', b'\x02', b'\x03', b'\x04']
+  let frame = @flatbuffers.MessageFrame::new(data, false)
+  inspect(frame.compressed, content="false")
+  inspect(frame.length, content="4")
+  // Encode
+  let wire = frame.encode()
+  inspect(wire.length(), content="9") // 5 header + 4 data
+  inspect(wire[0].to_int(), content="0") // not compressed
+  inspect(wire[4].to_int(), content="4") // length LSB
+  // Decode
+  match @flatbuffers.MessageFrame::decode(wire) {
+    Some(decoded) => {
+      inspect(decoded.compressed, content="false")
+      inspect(decoded.length, content="4")
+      inspect(decoded.data.length(), content="4")
+      inspect(decoded.data[0].to_int(), content="1")
+    }
+    None => assert_true(false)
+  }
+  // Compressed frame
+  let comp_frame = @flatbuffers.MessageFrame::new(data, true)
+  let comp_wire = comp_frame.encode()
+  inspect(comp_wire[0].to_int(), content="1") // compressed
+}
+
+///|
+test "MethodDescriptor creation" {
+  let desc = @flatbuffers.MethodDescriptor::new(
+    "example.Greeter",
+    "SayHello",
+    @flatbuffers.MethodType::Unary,
+  )
+  inspect(desc.service_name, content="example.Greeter")
+  inspect(desc.method_name, content="SayHello")
+  inspect(desc.method_type, content="Unary")
+  inspect(desc.full_path, content="/example.Greeter/SayHello")
+}
+
+///|
+test "ServiceDescriptor with methods" {
+  let svc = @flatbuffers.ServiceDescriptor::new("example.Calculator")
+  let _ = svc.add_method(
+    @flatbuffers.MethodDescriptor::new(
+      "example.Calculator",
+      "Add",
+      @flatbuffers.MethodType::Unary,
+    ),
+  )
+  let _ = svc.add_method(
+    @flatbuffers.MethodDescriptor::new(
+      "example.Calculator",
+      "StreamResults",
+      @flatbuffers.MethodType::ServerStreaming,
+    ),
+  )
+  inspect(svc.methods.length(), content="2")
+  match svc.get_method("Add") {
+    Some(m) => inspect(m.method_type, content="Unary")
+    None => assert_true(false)
+  }
+  match svc.get_method("StreamResults") {
+    Some(m) => inspect(m.method_type, content="ServerStreaming")
+    None => assert_true(false)
+  }
+  assert_true(svc.get_method("Missing") is None)
+}
+
+///|
+test "ServerContext operations" {
+  let ctx = @flatbuffers.ServerContext::new()
+    .with_peer("192.168.1.1:8080")
+    .with_deadline(1234567890L)
+  inspect(ctx.peer, content="192.168.1.1:8080")
+  inspect(ctx.deadline, content="Some(1234567890)")
+  inspect(ctx.is_cancelled(), content="false")
+  ctx.set_header("content-type", "application/x-flatbuffers")
+  ctx.set_trailer("grpc-status", "0")
+  inspect(ctx.response_headers.len(), content="1")
+  inspect(ctx.response_trailers.len(), content="1")
+}
+
+///|
+test "ClientContext operations" {
+  let ctx = @flatbuffers.ClientContext::new()
+    .add_metadata("authorization", "Bearer token")
+    .with_options(@flatbuffers.CallOptions::new().with_timeout(3000))
+  inspect(ctx.metadata.len(), content="1")
+  inspect(ctx.options.timeout_ms, content="Some(3000)")
+}
+
+///|
+test "ServerStream reading" {
+  let items = [1, 2, 3, 4, 5]
+  let mut idx = 0
+  let stream : @flatbuffers.ServerStream[Int] = @flatbuffers.ServerStream::new(fn() {
+    if idx < items.length() {
+      let val = items[idx]
+      idx = idx + 1
+      Some(val)
+    } else {
+      None
+    }
+  })
+  inspect(stream.read(), content="Some(1)")
+  inspect(stream.read(), content="Some(2)")
+  inspect(stream.read(), content="Some(3)")
+  inspect(stream.read(), content="Some(4)")
+  inspect(stream.read(), content="Some(5)")
+  inspect(stream.read(), content="None")
+  inspect(stream.done, content="true")
+}
+
+///|
+test "ClientStream writing" {
+  let buffer : Array[Int] = []
+  let mut closed = false
+  let stream : @flatbuffers.ClientStream[Int] = @flatbuffers.ClientStream::new(
+    fn(val) {
+      buffer.push(val)
+      true
+    },
+    fn() { closed = true },
+  )
+  inspect(stream.write(10), content="true")
+  inspect(stream.write(20), content="true")
+  inspect(buffer.length(), content="2")
+  stream.close()
+  inspect(closed, content="true")
+  inspect(stream.write(30), content="false") // closed
+}
+
+///|
+test "Channel state transitions" {
+  let ch = @flatbuffers.Channel::new("localhost:50051")
+  inspect(ch.get_state(), content="Idle")
+  inspect(ch.get_target(), content="localhost:50051")
+  ch.connect()
+  inspect(ch.get_state(), content="Ready")
+  ch.shutdown()
+  inspect(ch.get_state(), content="Shutdown")
+}
+
+///|
+test "HealthService check" {
+  let health = @flatbuffers.HealthService::new()
+  health.set_status("my.Service", @flatbuffers.ServingStatus::Serving)
+  health.set_status("another.Service", @flatbuffers.ServingStatus::NotServing)
+  inspect(health.check("my.Service"), content="Serving")
+  inspect(health.check("another.Service"), content="NotServing")
+  inspect(health.check("unknown.Service"), content="ServiceUnknown")
+  // Update status
+  health.set_status("my.Service", @flatbuffers.ServingStatus::NotServing)
+  inspect(health.check("my.Service"), content="NotServing")
+  // Clear status
+  health.clear_status("my.Service")
+  inspect(health.check("my.Service"), content="ServiceUnknown")
+}
+
+///|
+test "ReflectionService discovery" {
+  let reflection = @flatbuffers.ReflectionService::new()
+  let svc1 = @flatbuffers.ServiceDescriptor::new("example.Greeter")
+  let _ = svc1.add_method(
+    @flatbuffers.MethodDescriptor::new(
+      "example.Greeter",
+      "SayHello",
+      @flatbuffers.MethodType::Unary,
+    ),
+  )
+  let svc2 = @flatbuffers.ServiceDescriptor::new("example.Calculator")
+  reflection.register(svc1)
+  reflection.register(svc2)
+  let services = reflection.list_services()
+  inspect(services.length(), content="2")
+  inspect(services[0], content="example.Greeter")
+  inspect(services[1], content="example.Calculator")
+  match reflection.get_service("example.Greeter") {
+    Some(s) => inspect(s.methods.length(), content="1")
+    None => assert_true(false)
+  }
+  assert_true(reflection.get_service("missing.Service") is None)
+}
+
+///|
+test "ClientInterceptor chain" {
+  let interceptor = @flatbuffers.ClientInterceptor::new(
+    fn(_ctx, data) {
+      // Add prefix byte
+      let result = FixedArray::make(data.length() + 1, b'\x00')
+      result[0] = b'\xFF' // marker
+      for i = 0; i < data.length(); i = i + 1 {
+        result[i + 1] = data[i]
+      }
+      result
+    },
+    fn(_ctx, data) { data }, // pass through
+  )
+  let input : FixedArray[Byte] = [b'\x01', b'\x02']
+  let output = (interceptor.on_request)(
+    @flatbuffers.ClientContext::new(),
+    input,
+  )
+  inspect(output.length(), content="3")
+  inspect(output[0].to_int(), content="255")
+  inspect(output[1].to_int(), content="1")
+}
+
+///|
+test "ServerInterceptor chain" {
+  let interceptor = @flatbuffers.ServerInterceptor::new(
+    fn(_ctx, data) { data }, // pass through request
+    fn(_ctx, data) {
+      // Add suffix byte
+      let result = FixedArray::make(data.length() + 1, b'\x00')
+      for i = 0; i < data.length(); i = i + 1 {
+        result[i] = data[i]
+      }
+      result[data.length()] = b'\xEE' // trailer marker
+      result
+    },
+  )
+  let input : FixedArray[Byte] = [b'\x01', b'\x02']
+  let output = (interceptor.on_response)(
+    @flatbuffers.ServerContext::new(),
+    input,
+  )
+  inspect(output.length(), content="3")
+  inspect(output[2].to_int(), content="238")
+}
