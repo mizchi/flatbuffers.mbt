@@ -169,14 +169,7 @@ pub struct SchemaAst {
 
 ///|
 pub fn SchemaAst::new() -> SchemaAst {
-  {
-    ns: "",
-    enums: [],
-    structs: [],
-    tables: [],
-    unions: [],
-    root_type: None,
-  }
+  { ns: "", enums: [], structs: [], tables: [], unions: [], root_type: None }
 }
 
 // =============================================================================
@@ -233,10 +226,8 @@ fn Parser::advance(self : Parser) -> Char? {
 fn Parser::skip_whitespace(self : Parser) -> Unit {
   while true {
     match self.peek() {
-      Some(' ') | Some('\t') | Some('\n') | Some('\r') => {
-        ignore(self.advance())
-      }
-      Some('/') => {
+      Some(' ') | Some('\t') | Some('\n') | Some('\r') => ignore(self.advance())
+      Some('/') =>
         // Check for comments
         if self.pos + 1 < self.input.length() &&
           string_char_at(self.input, self.pos + 1) == '/' {
@@ -271,7 +262,6 @@ fn Parser::skip_whitespace(self : Parser) -> Unit {
         } else {
           break
         }
-      }
       _ => break
     }
   }
@@ -338,12 +328,12 @@ fn Parser::parse_number(self : Parser) -> Int {
       _ => break
     }
   }
-  let num = if result.is_empty() {
-    0
+  let num = if result.is_empty() { 0 } else { parse_int_from_chars(result) }
+  if negative {
+    -num
   } else {
-    parse_int_from_chars(result)
+    num
   }
-  if negative { -num } else { num }
 }
 
 ///|
@@ -455,11 +445,16 @@ fn Parser::parse_field(self : Parser) -> FieldAst? {
     self.skip_whitespace()
     // Could be a number, identifier, or string
     match self.peek() {
-      Some(c) if (c >= '0' && c <= '9') || c == '-' => Some(self.parse_number().to_string())
+      Some(c) if (c >= '0' && c <= '9') || c == '-' =>
+        Some(self.parse_number().to_string())
       Some('\u{22}') => Some(self.parse_string_literal())
       _ => {
         let id = self.parse_identifier()
-        if id.is_empty() { None } else { Some(id) }
+        if id.is_empty() {
+          None
+        } else {
+          Some(id)
+        }
       }
     }
   } else {
@@ -607,36 +602,32 @@ pub fn parse_schema(input : String) -> SchemaAst {
         schema.ns = ns
         ignore(parser.expect(';'))
       }
-      "enum" => {
+      "enum" =>
         match parser.parse_enum() {
           Some(e) => schema.enums.push(e)
           None => ()
         }
-      }
-      "struct" => {
+      "struct" =>
         match parser.parse_struct() {
           Some(s) => schema.structs.push(s)
           None => ()
         }
-      }
-      "table" => {
+      "table" =>
         match parser.parse_table() {
           Some(t) => schema.tables.push(t)
           None => ()
         }
-      }
-      "union" => {
+      "union" =>
         match parser.parse_union() {
           Some(u) => schema.unions.push(u)
           None => ()
         }
-      }
       "root_type" => {
         let rt = parser.parse_identifier()
         schema.root_type = Some(rt)
         ignore(parser.expect(';'))
       }
-      "include" | "attribute" | "file_identifier" | "file_extension" => {
+      "include" | "attribute" | "file_identifier" | "file_extension" =>
         // Skip these directives
         while true {
           match parser.peek() {
@@ -648,12 +639,10 @@ pub fn parse_schema(input : String) -> SchemaAst {
             None => break
           }
         }
-      }
       "" => break
-      _ => {
+      _ =>
         // Skip unknown tokens
         ()
-      }
     }
   }
   schema
@@ -719,7 +708,13 @@ fn generate_enum(enum_def : EnumAst) -> String {
   lines.push("")
   // Add to_int method
   lines.push("///|")
-  lines.push("pub fn " + enum_def.name + "::to_int(self : " + enum_def.name + ") -> Int {")
+  lines.push(
+    "pub fn " +
+    enum_def.name +
+    "::to_int(self : " +
+    enum_def.name +
+    ") -> Int {",
+  )
   lines.push("  match self {")
   next_value = 0
   for v in enum_def.values {
@@ -742,7 +737,10 @@ fn generate_enum(enum_def : EnumAst) -> String {
   // Add from_int method
   lines.push("///|")
   lines.push(
-    "pub fn " + enum_def.name + "::from_int(value : Int) -> " + enum_def.name +
+    "pub fn " +
+    enum_def.name +
+    "::from_int(value : Int) -> " +
+    enum_def.name +
     "? {",
   )
   lines.push("  match value {")
@@ -795,7 +793,9 @@ fn generate_struct(struct_def : StructAst) -> String {
 
   // Generate struct reader
   lines.push("///|")
-  lines.push("/// " + name + " struct reader (size: " + size.to_string() + " bytes)")
+  lines.push(
+    "/// " + name + " struct reader (size: " + size.to_string() + " bytes)",
+  )
   lines.push("pub struct " + name + " {")
   lines.push("  buf : @flatbuffers.ByteBuffer")
   lines.push("  pos : Int")
@@ -804,7 +804,13 @@ fn generate_struct(struct_def : StructAst) -> String {
 
   // Generate constructor
   lines.push("///|")
-  lines.push("pub fn " + name + "::new(buf : @flatbuffers.ByteBuffer, pos : Int) -> " + name + " {")
+  lines.push(
+    "pub fn " +
+    name +
+    "::new(buf : @flatbuffers.ByteBuffer, pos : Int) -> " +
+    name +
+    " {",
+  )
   lines.push("  { buf, pos }")
   lines.push("}")
   lines.push("")
@@ -822,7 +828,6 @@ fn generate_struct(struct_def : StructAst) -> String {
         }
       _ => 4
     }
-
     match field.field_type {
       Scalar(scalar_type) => {
         let moonbit_type = scalar_type.to_moonbit_type()
@@ -840,8 +845,24 @@ fn generate_struct(struct_def : StructAst) -> String {
           Double => "read_float64"
         }
         lines.push("///|")
-        lines.push("pub fn " + name + "::" + field.name + "(self : " + name + ") -> " + moonbit_type + " {")
-        lines.push("  self.buf." + read_method + "(self.pos + " + offset.to_string() + ")")
+        lines.push(
+          "pub fn " +
+          name +
+          "::" +
+          field.name +
+          "(self : " +
+          name +
+          ") -> " +
+          moonbit_type +
+          " {",
+        )
+        lines.push(
+          "  self.buf." +
+          read_method +
+          "(self.pos + " +
+          offset.to_string() +
+          ")",
+        )
         lines.push("}")
         lines.push("")
       }
@@ -857,9 +878,14 @@ fn generate_struct(struct_def : StructAst) -> String {
   lines.push("  builder : @flatbuffers.Builder")
   lines.push("}")
   lines.push("")
-
   lines.push("///|")
-  lines.push("pub fn " + name + "Builder::new(builder : @flatbuffers.Builder) -> " + name + "Builder {")
+  lines.push(
+    "pub fn " +
+    name +
+    "Builder::new(builder : @flatbuffers.Builder) -> " +
+    name +
+    "Builder {",
+  )
   lines.push("  { builder }")
   lines.push("}")
   lines.push("")
@@ -876,7 +902,15 @@ fn generate_struct(struct_def : StructAst) -> String {
       _ => ()
     }
   }
-  lines.push("pub fn " + name + "Builder::create(self : " + name + "Builder, " + params.join(", ") + ") -> Int {")
+  lines.push(
+    "pub fn " +
+    name +
+    "Builder::create(self : " +
+    name +
+    "Builder, " +
+    params.join(", ") +
+    ") -> Int {",
+  )
   lines.push("  self.builder.prep(" + size.to_string() + ", 0)")
 
   // Write fields in reverse order (FlatBuffers are built backwards)
@@ -913,7 +947,6 @@ fn generate_struct(struct_def : StructAst) -> String {
   }
   lines.push("  self.builder.offset()")
   lines.push("}")
-
   lines.join("\n")
 }
 
@@ -936,7 +969,9 @@ fn generate_union(union_def : UnionAst) -> String {
 
   // Generate to_int method
   lines.push("///|")
-  lines.push("pub fn " + name + "Type::to_int(self : " + name + "Type) -> Int {")
+  lines.push(
+    "pub fn " + name + "Type::to_int(self : " + name + "Type) -> Int {",
+  )
   lines.push("  match self {")
   lines.push("    None => 0")
   for i, type_name in union_def.types {
@@ -948,7 +983,9 @@ fn generate_union(union_def : UnionAst) -> String {
 
   // Generate from_int method
   lines.push("///|")
-  lines.push("pub fn " + name + "Type::from_int(value : Int) -> " + name + "Type {")
+  lines.push(
+    "pub fn " + name + "Type::from_int(value : Int) -> " + name + "Type {",
+  )
   lines.push("  match value {")
   for i, type_name in union_def.types {
     lines.push("    " + (i + 1).to_string() + " => " + type_name)
@@ -966,24 +1003,36 @@ fn generate_union(union_def : UnionAst) -> String {
   lines.push("  table : @flatbuffers.Table?")
   lines.push("}")
   lines.push("")
-
   lines.push("///|")
-  lines.push("pub fn " + name + "::new(union_type : " + name + "Type, table : @flatbuffers.Table?) -> " + name + " {")
+  lines.push(
+    "pub fn " +
+    name +
+    "::new(union_type : " +
+    name +
+    "Type, table : @flatbuffers.Table?) -> " +
+    name +
+    " {",
+  )
   lines.push("  { union_type, table }")
   lines.push("}")
   lines.push("")
-
   lines.push("///|")
-  lines.push("pub fn " + name + "::get_type(self : " + name + ") -> " + name + "Type {")
+  lines.push(
+    "pub fn " + name + "::get_type(self : " + name + ") -> " + name + "Type {",
+  )
   lines.push("  self.union_type")
   lines.push("}")
   lines.push("")
-
   lines.push("///|")
-  lines.push("pub fn " + name + "::get_table(self : " + name + ") -> @flatbuffers.Table? {")
+  lines.push(
+    "pub fn " +
+    name +
+    "::get_table(self : " +
+    name +
+    ") -> @flatbuffers.Table? {",
+  )
   lines.push("  self.table")
   lines.push("}")
-
   lines.join("\n")
 }
 
@@ -1000,7 +1049,13 @@ fn generate_table(table_def : TableAst, schema : SchemaAst) -> String {
   lines.push("")
   // Generate constructor from buffer
   lines.push("///|")
-  lines.push("pub fn " + name + "::from_buffer(buf : @flatbuffers.ByteBuffer) -> " + name + " {")
+  lines.push(
+    "pub fn " +
+    name +
+    "::from_buffer(buf : @flatbuffers.ByteBuffer) -> " +
+    name +
+    " {",
+  )
   lines.push("  { table: @flatbuffers.Table::get_root(buf) }")
   lines.push("}")
   lines.push("")
@@ -1023,7 +1078,9 @@ fn generate_table(table_def : TableAst, schema : SchemaAst) -> String {
   // Generate builder constructor
   lines.push("///|")
   lines.push(
-    "pub fn " + name + "Builder::new(builder : @flatbuffers.Builder) -> " +
+    "pub fn " +
+    name +
+    "Builder::new(builder : @flatbuffers.Builder) -> " +
     name +
     "Builder {",
   )
@@ -1036,14 +1093,17 @@ fn generate_table(table_def : TableAst, schema : SchemaAst) -> String {
       String => {
         lines.push("///|")
         lines.push(
-          "pub fn " + name + "Builder::set_" + field.name + "(self : " + name +
+          "pub fn " +
+          name +
+          "Builder::set_" +
+          field.name +
+          "(self : " +
+          name +
           "Builder, value : String) -> " +
           name +
           "Builder {",
         )
-        lines.push(
-          "  let offset = self.builder.create_string(value)",
-        )
+        lines.push("  let offset = self.builder.create_string(value)")
         lines.push("  self.string_offsets.set(\"" + field.name + "\", offset)")
         lines.push("  self")
         lines.push("}")
@@ -1052,7 +1112,10 @@ fn generate_table(table_def : TableAst, schema : SchemaAst) -> String {
       Vector(_) => {
         lines.push("///|")
         lines.push(
-          "pub fn " + name + "Builder::set_" + field.name +
+          "pub fn " +
+          name +
+          "Builder::set_" +
+          field.name +
           "_offset(self : " +
           name +
           "Builder, offset : Int) -> " +
@@ -1069,7 +1132,9 @@ fn generate_table(table_def : TableAst, schema : SchemaAst) -> String {
   }
   // Generate start method
   lines.push("///|")
-  lines.push("pub fn " + name + "Builder::start(self : " + name + "Builder) -> Unit {")
+  lines.push(
+    "pub fn " + name + "Builder::start(self : " + name + "Builder) -> Unit {",
+  )
   lines.push(
     "  self.builder.start_object(" + table_def.fields.length().to_string() + ")",
   )
@@ -1088,7 +1153,12 @@ fn generate_table(table_def : TableAst, schema : SchemaAst) -> String {
         }
         lines.push("///|")
         lines.push(
-          "pub fn " + name + "Builder::add_" + field.name + "(self : " + name +
+          "pub fn " +
+          name +
+          "Builder::add_" +
+          field.name +
+          "(self : " +
+          name +
           "Builder, value : " +
           moonbit_type +
           ") -> " +
@@ -1096,7 +1166,10 @@ fn generate_table(table_def : TableAst, schema : SchemaAst) -> String {
           "Builder {",
         )
         lines.push(
-          "  self.builder." + builder_method + "(" + slot.to_string() +
+          "  self.builder." +
+          builder_method +
+          "(" +
+          slot.to_string() +
           ", value, " +
           default +
           ")",
@@ -1111,29 +1184,30 @@ fn generate_table(table_def : TableAst, schema : SchemaAst) -> String {
   // Generate finish_fields method
   lines.push("///|")
   lines.push(
-    "pub fn " + name + "Builder::finish_fields(self : " + name +
+    "pub fn " +
+    name +
+    "Builder::finish_fields(self : " +
+    name +
     "Builder) -> Unit {",
   )
   for i, field in table_def.fields {
     let slot = i
     match field.field_type {
       String => {
+        lines.push("  match self.string_offsets.get(\"" + field.name + "\") {")
         lines.push(
-          "  match self.string_offsets.get(\"" + field.name + "\") {",
-        )
-        lines.push(
-          "    Some(offset) => self.builder.add_offset(" + slot.to_string() +
+          "    Some(offset) => self.builder.add_offset(" +
+          slot.to_string() +
           ", offset)",
         )
         lines.push("    None => ()")
         lines.push("  }")
       }
       Vector(_) => {
+        lines.push("  match self.vector_offsets.get(\"" + field.name + "\") {")
         lines.push(
-          "  match self.vector_offsets.get(\"" + field.name + "\") {",
-        )
-        lines.push(
-          "    Some(offset) => self.builder.add_offset(" + slot.to_string() +
+          "    Some(offset) => self.builder.add_offset(" +
+          slot.to_string() +
           ", offset)",
         )
         lines.push("    None => ()")
@@ -1146,14 +1220,18 @@ fn generate_table(table_def : TableAst, schema : SchemaAst) -> String {
   lines.push("")
   // Generate end method
   lines.push("///|")
-  lines.push("pub fn " + name + "Builder::end(self : " + name + "Builder) -> Int {")
+  lines.push(
+    "pub fn " + name + "Builder::end(self : " + name + "Builder) -> Int {",
+  )
   lines.push("  self.finish_fields()")
   lines.push("  self.builder.end_object()")
   lines.push("}")
   lines.push("")
   // Generate finish method
   lines.push("///|")
-  lines.push("pub fn " + name + "Builder::finish(self : " + name + "Builder) -> Unit {")
+  lines.push(
+    "pub fn " + name + "Builder::finish(self : " + name + "Builder) -> Unit {",
+  )
   lines.push("  let offset = self.end()")
   lines.push("  self.builder.finish(offset)")
   lines.push("}")
@@ -1162,7 +1240,11 @@ fn generate_table(table_def : TableAst, schema : SchemaAst) -> String {
 
 ///|
 /// Resolve enum default value name to integer
-fn resolve_enum_default(schema : SchemaAst, enum_name : String, default_name : String) -> String {
+fn resolve_enum_default(
+  schema : SchemaAst,
+  enum_name : String,
+  default_name : String,
+) -> String {
   // First check if it's already a number
   let is_numeric = {
     let mut all_digits = true
@@ -1237,7 +1319,7 @@ fn generate_field_getter(
   type_name : String,
   field : FieldAst,
   slot : Int,
-  schema : SchemaAst
+  schema : SchemaAst,
 ) -> String {
   let lines : Array[String] = []
   match field.field_type {
@@ -1250,13 +1332,22 @@ fn generate_field_getter(
       }
       lines.push("///|")
       lines.push(
-        "pub fn " + type_name + "::" + field.name + "(self : " + type_name +
+        "pub fn " +
+        type_name +
+        "::" +
+        field.name +
+        "(self : " +
+        type_name +
         ") -> " +
         moonbit_type +
         " {",
       )
       lines.push(
-        "  self.table." + getter_method + "(" + slot.to_string() + ", " +
+        "  self.table." +
+        getter_method +
+        "(" +
+        slot.to_string() +
+        ", " +
         default +
         ")",
       )
@@ -1265,7 +1356,12 @@ fn generate_field_getter(
     String => {
       lines.push("///|")
       lines.push(
-        "pub fn " + type_name + "::" + field.name + "(self : " + type_name +
+        "pub fn " +
+        type_name +
+        "::" +
+        field.name +
+        "(self : " +
+        type_name +
         ") -> String {",
       )
       lines.push("  self.table.get_string(" + slot.to_string() + ", \"\")")
@@ -1274,7 +1370,11 @@ fn generate_field_getter(
     Vector(elem_type) => {
       lines.push("///|")
       lines.push(
-        "pub fn " + type_name + "::" + field.name + "_length(self : " +
+        "pub fn " +
+        type_name +
+        "::" +
+        field.name +
+        "_length(self : " +
         type_name +
         ") -> Int {",
       )
@@ -1285,7 +1385,12 @@ fn generate_field_getter(
           lines.push("")
           lines.push("///|")
           lines.push(
-            "pub fn " + type_name + "::" + field.name + "(self : " + type_name +
+            "pub fn " +
+            type_name +
+            "::" +
+            field.name +
+            "(self : " +
+            type_name +
             ", index : Int) -> Byte {",
           )
           lines.push(
@@ -1297,7 +1402,12 @@ fn generate_field_getter(
           lines.push("")
           lines.push("///|")
           lines.push(
-            "pub fn " + type_name + "::" + field.name + "(self : " + type_name +
+            "pub fn " +
+            type_name +
+            "::" +
+            field.name +
+            "(self : " +
+            type_name +
             ", index : Int) -> Int {",
           )
           lines.push(
@@ -1310,7 +1420,12 @@ fn generate_field_getter(
           lines.push("")
           lines.push("///|")
           lines.push(
-            "pub fn " + type_name + "::" + field.name + "_table(self : " + type_name +
+            "pub fn " +
+            type_name +
+            "::" +
+            field.name +
+            "_table(self : " +
+            type_name +
             ", index : Int) -> @flatbuffers.Table? {",
           )
           lines.push(
@@ -1322,7 +1437,7 @@ fn generate_field_getter(
         _ => ()
       }
     }
-    Reference(ref_type) => {
+    Reference(ref_type) =>
       // Check if it's a union, struct, enum, or table
       if is_union_type(schema, ref_type) {
         // Union: generates both type getter and value getter
@@ -1332,33 +1447,64 @@ fn generate_field_getter(
         lines.push("///|")
         lines.push("/// Get " + field.name + " union type")
         lines.push(
-          "pub fn " + type_name + "::" + field.name + "_type(self : " + type_name +
-          ") -> " + ref_type + "Type {",
+          "pub fn " +
+          type_name +
+          "::" +
+          field.name +
+          "_type(self : " +
+          type_name +
+          ") -> " +
+          ref_type +
+          "Type {",
         )
-        lines.push("  " + ref_type + "Type::from_int(self.table.get_uint8(" + slot.to_string() + ", 0))")
+        lines.push(
+          "  " +
+          ref_type +
+          "Type::from_int(self.table.get_uint8(" +
+          slot.to_string() +
+          ", 0))",
+        )
         lines.push("}")
         lines.push("")
         lines.push("///|")
         lines.push("/// Get " + field.name + " union value as table")
         lines.push(
-          "pub fn " + type_name + "::" + field.name + "(self : " + type_name +
-          ") -> " + ref_type + " {",
+          "pub fn " +
+          type_name +
+          "::" +
+          field.name +
+          "(self : " +
+          type_name +
+          ") -> " +
+          ref_type +
+          " {",
         )
         // Note: the actual value slot is typically the next slot
         let value_slot = slot + 1
         lines.push("  let union_type = self." + field.name + "_type()")
-        lines.push("  let table = self.table.get_table(" + value_slot.to_string() + ")")
+        lines.push(
+          "  let table = self.table.get_table(" + value_slot.to_string() + ")",
+        )
         lines.push("  " + ref_type + "::new(union_type, table)")
         lines.push("}")
       } else if is_struct_type(schema, ref_type) {
         // Struct: read inline data
         lines.push("///|")
         lines.push(
-          "pub fn " + type_name + "::" + field.name + "(self : " + type_name +
-          ") -> " + ref_type + "? {",
+          "pub fn " +
+          type_name +
+          "::" +
+          field.name +
+          "(self : " +
+          type_name +
+          ") -> " +
+          ref_type +
+          "? {",
         )
         lines.push("  match self.table.get_struct(" + slot.to_string() + ") {")
-        lines.push("    Some(pos) => Some(" + ref_type + "::new(self.table.buf, pos))")
+        lines.push(
+          "    Some(pos) => Some(" + ref_type + "::new(self.table.buf, pos))",
+        )
         lines.push("    None => None")
         lines.push("  }")
         lines.push("}")
@@ -1366,27 +1512,46 @@ fn generate_field_getter(
         // Enum: read as integer and convert
         lines.push("///|")
         lines.push(
-          "pub fn " + type_name + "::" + field.name + "(self : " + type_name +
-          ") -> " + ref_type + "? {",
+          "pub fn " +
+          type_name +
+          "::" +
+          field.name +
+          "(self : " +
+          type_name +
+          ") -> " +
+          ref_type +
+          "? {",
         )
         // Resolve enum default value to integer
         let default = match field.default_value {
           Some(d) => resolve_enum_default(schema, ref_type, d)
           None => "0"
         }
-        lines.push("  " + ref_type + "::from_int(self.table.get_uint8(" + slot.to_string() + ", " + default + "))")
+        lines.push(
+          "  " +
+          ref_type +
+          "::from_int(self.table.get_uint8(" +
+          slot.to_string() +
+          ", " +
+          default +
+          "))",
+        )
         lines.push("}")
       } else {
         // Regular table reference
         lines.push("///|")
         lines.push(
-          "pub fn " + type_name + "::" + field.name + "(self : " + type_name +
+          "pub fn " +
+          type_name +
+          "::" +
+          field.name +
+          "(self : " +
+          type_name +
           ") -> @flatbuffers.Table? {",
         )
         lines.push("  self.table.get_table(" + slot.to_string() + ")")
         lines.push("}")
       }
-    }
   }
   lines.join("\n")
 }

@@ -73,9 +73,7 @@ fn main {
       }
 
       // Read schema file
-      let schema_text = try {
-        @fs.read_file_to_string(path)
-      } catch {
+      let schema_text = @fs.read_file_to_string(path) catch {
         @fs.IOError(msg) => {
           println("Error reading file: " + msg)
           @sys.exit(1)
@@ -90,11 +88,10 @@ fn main {
 
       // Output
       match output_file {
-        None => {
+        None =>
           // Output to stdout
           println(code)
-        }
-        Some(out_path) => {
+        Some(out_path) =>
           // Write to file
           try {
             @fs.write_string_to_file(out_path, code)
@@ -109,7 +106,6 @@ fn main {
               @sys.exit(1)
             }
           }
-        }
       }
     }
   }

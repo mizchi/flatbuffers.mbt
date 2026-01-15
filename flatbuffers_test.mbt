@@ -416,12 +416,10 @@ test "enum as ubyte" {
   // Color values (use Int since FlatBuffers API uses Int)
   let color_red = 0
   let color_blue = 2
-
   builder.start_object(1)
   builder.add_uint8(0, color_blue, 0) // default is Red (0)
   let table = builder.end_object()
   builder.finish(table)
-
   let buf = @flatbuffers.ByteBuffer::new(builder.to_fixed_array())
   let root = @flatbuffers.Table::get_root(buf)
   inspect(root.get_uint8(0, color_red), content="2") // Blue
@@ -437,12 +435,10 @@ test "enum as byte with negative" {
   let race_none = -1
   let race_human = 0
   let race_elf = 2
-
   builder.start_object(1)
   builder.add_int8(0, race_elf, race_human)
   let table = builder.end_object()
   builder.finish(table)
-
   let buf = @flatbuffers.ByteBuffer::new(builder.to_fixed_array())
   let root = @flatbuffers.Table::get_root(buf)
   inspect(root.get_int8(0, race_none), content="2") // Elf
@@ -460,22 +456,20 @@ test "enum bit_flags" {
   let color_blue = 4
 
   // Combine flags: Red | Blue = 5
-  let combined = color_red.lor(color_blue)
-
+  let combined = color_red | color_blue
   builder.start_object(1)
   builder.add_uint8(0, combined, 0)
   let table = builder.end_object()
   builder.finish(table)
-
   let buf = @flatbuffers.ByteBuffer::new(builder.to_fixed_array())
   let root = @flatbuffers.Table::get_root(buf)
   let value = root.get_uint8(0, 0)
   inspect(value, content="5") // Red | Blue
 
   // Check individual flags
-  let has_red = value.land(color_red) != 0
-  let has_green = value.land(color_green) != 0
-  let has_blue = value.land(color_blue) != 0
+  let has_red = (value & color_red) != 0
+  let has_green = (value & color_green) != 0
+  let has_blue = (value & color_blue) != 0
   inspect(has_red, content="true")
   inspect(has_green, content="false")
   inspect(has_blue, content="true")
@@ -535,7 +529,6 @@ test "union basic" {
 /// Test union with NONE type
 test "union none type" {
   let builder = @flatbuffers.Builder::new()
-
   let equip_none = 0
 
   // Create Character with no equipment
@@ -565,7 +558,6 @@ test "union none type" {
 ///   table Container { thing_type: ubyte; thing: Any; }
 test "union different types" {
   let builder = @flatbuffers.Builder::new()
-
   let any_monster = 1
   let any_weapon = 2
 
@@ -575,12 +567,10 @@ test "union different types" {
   builder.add_offset(0, monster_name)
   builder.add_int16(1, 50, 0) // hp
   let monster = builder.end_object()
-
   builder.start_object(2)
   builder.add_union(0, any_monster, 1, monster)
   let container1 = builder.end_object()
   builder.finish(container1)
-
   let buf1 = @flatbuffers.ByteBuffer::new(builder.to_fixed_array())
   let root1 = @flatbuffers.Table::get_root(buf1)
   inspect(root1.get_union_type(0), content="1") // Monster
@@ -591,18 +581,15 @@ test "union different types" {
 
   // Second container: Weapon
   builder.reset()
-
   let weapon_name = builder.create_string("Dagger")
   builder.start_object(2)
   builder.add_offset(0, weapon_name)
   builder.add_int16(1, 15, 0) // damage
   let weapon = builder.end_object()
-
   builder.start_object(2)
   builder.add_union(0, any_weapon, 1, weapon)
   let container2 = builder.end_object()
   builder.finish(container2)
-
   let buf2 = @flatbuffers.ByteBuffer::new(builder.to_fixed_array())
   let root2 = @flatbuffers.Table::get_root(buf2)
   inspect(root2.get_union_type(0), content="2") // Weapon
@@ -624,7 +611,6 @@ test "verifier valid buffer" {
   builder.add_offset(0, name)
   let table = builder.end_object()
   builder.finish(table)
-
   let buf = @flatbuffers.ByteBuffer::new(builder.to_fixed_array())
   inspect(buf.verify(), content="true")
 }
@@ -636,7 +622,6 @@ test "verifier valid buffer with identifier" {
   builder.add_int32(0, 42, 0)
   let table = builder.end_object()
   builder.finish_with_identifier(table, "TEST")
-
   let buf = @flatbuffers.ByteBuffer::new(builder.to_fixed_array())
   inspect(buf.verify_with_identifier("TEST"), content="true")
   inspect(buf.verify_with_identifier("FAIL"), content="false")
@@ -649,7 +634,6 @@ test "verifier size-prefixed buffer" {
   builder.add_int32(0, 100, 0)
   let table = builder.end_object()
   builder.finish_size_prefixed(table)
-
   let buf = @flatbuffers.ByteBuffer::new(builder.to_fixed_array())
   inspect(buf.verify_size_prefixed(), content="true")
 }
@@ -670,9 +654,8 @@ test "verifier truncated buffer fails" {
 ///|
 test "verifier invalid root offset fails" {
   // Root offset pointing outside buffer
-  let buf = @flatbuffers.ByteBuffer::new([
-    b'\xFF', b'\xFF', b'\x00', b'\x00', // root offset = 65535 (invalid)
-  ])
+  let buf = @flatbuffers.ByteBuffer::new([b'\xFF', b'\xFF', b'\x00', b'\x00'], // root offset = 65535 (invalid)
+  )
   inspect(buf.verify(), content="false")
 }
 
@@ -684,7 +667,6 @@ test "verifier string validation" {
   builder.add_offset(0, str)
   let table = builder.end_object()
   builder.finish(table)
-
   let buf = @flatbuffers.ByteBuffer::new(builder.to_fixed_array())
 
   // Verify the buffer is valid (includes string validation)
@@ -703,7 +685,6 @@ test "verifier depth limit" {
   builder.add_int32(0, 1, 0)
   let table = builder.end_object()
   builder.finish(table)
-
   let buf = @flatbuffers.ByteBuffer::new(builder.to_fixed_array())
   let verifier = @flatbuffers.Verifier::new(buf, opts)
 
@@ -719,7 +700,6 @@ test "verifier table count limit" {
   builder.add_int32(0, 1, 0)
   let table = builder.end_object()
   builder.finish(table)
-
   let buf = @flatbuffers.ByteBuffer::new(builder.to_fixed_array())
   let verifier = @flatbuffers.Verifier::new(buf, opts)
 
@@ -781,7 +761,9 @@ test "nested flatbuffer get_nested_root" {
 
   // Create outer FlatBuffer
   let outer_builder = @flatbuffers.Builder::new()
-  let nested = outer_builder.create_nested_flatbuffer_from_builder(inner_builder)
+  let nested = outer_builder.create_nested_flatbuffer_from_builder(
+    inner_builder,
+  )
   outer_builder.start_object(1)
   outer_builder.add_offset(0, nested)
   let outer_table = outer_builder.end_object()
@@ -803,14 +785,12 @@ test "nested flatbuffer absent field" {
   // field 1 (nested) is not set
   let table = builder.end_object()
   builder.finish(table)
-
   let buf = @flatbuffers.ByteBuffer::new(builder.to_fixed_array())
   let root = @flatbuffers.Table::get_root(buf)
 
   // Nested field should return None
   let nested = root.get_nested_flatbuffer(1)
   inspect(nested is None, content="true")
-
   let nested_root = root.get_nested_root(1)
   inspect(nested_root is None, content="true")
 }
@@ -833,7 +813,6 @@ test "nested flatbuffer verification" {
   outer_builder.add_offset(0, nested)
   let outer_table = outer_builder.end_object()
   outer_builder.finish(outer_table)
-
   let buf = @flatbuffers.ByteBuffer::new(outer_builder.to_fixed_array())
   let root = @flatbuffers.Table::get_root(buf)
   let verifier = @flatbuffers.Verifier::from_buffer(buf)
@@ -876,11 +855,9 @@ test "nested flatbuffer multiple levels" {
   let buf = @flatbuffers.ByteBuffer::new(level1.to_fixed_array())
   let root1 = @flatbuffers.Table::get_root(buf)
   inspect(root1.get_string(0, ""), content="Level1")
-
   let root2 = root1.get_nested_root(1)
   guard root2 is Some(r2) else { fail("Expected level 2") }
   inspect(r2.get_string(0, ""), content="Level2")
-
   let root3 = r2.get_nested_root(1)
   guard root3 is Some(r3) else { fail("Expected level 3") }
   inspect(r3.get_string(0, ""), content="Level3")
@@ -905,7 +882,6 @@ test "shared strings deduplication" {
 ///|
 test "shared strings different strings" {
   let builder = @flatbuffers.Builder::new()
-
   let s1 = builder.create_shared_string("Hello")
   let s2 = builder.create_shared_string("World")
 
@@ -948,7 +924,6 @@ test "shared strings reduces size" {
 ///|
 test "shared strings clear cache" {
   let builder = @flatbuffers.Builder::new()
-
   let s1 = builder.create_shared_string("Test")
   builder.clear_string_cache()
   let s2 = builder.create_shared_string("Test")
@@ -999,14 +974,12 @@ test "force defaults serializes default values" {
 test "force defaults with multiple fields" {
   let builder = @flatbuffers.Builder::new()
   builder.set_force_defaults(true)
-
   builder.start_object(3)
   builder.add_int32(0, 0, 0) // equals default
   builder.add_int32(1, 100, 100) // equals default
   builder.add_bool(2, false, false) // equals default
   let table = builder.end_object()
   builder.finish(table)
-
   let buf = @flatbuffers.ByteBuffer::new(builder.to_fixed_array())
   let root = @flatbuffers.Table::get_root(buf)
 
@@ -1021,7 +994,6 @@ test "force defaults resets with builder" {
   let builder = @flatbuffers.Builder::new()
   builder.set_force_defaults(true)
   inspect(builder.get_force_defaults(), content="true")
-
   builder.reset()
   inspect(builder.get_force_defaults(), content="false")
 }
@@ -1114,12 +1086,10 @@ test "json from flatbuffer table" {
   // Read and convert to JSON
   let buf = @flatbuffers.ByteBuffer::new(builder.to_fixed_array())
   let root = @flatbuffers.Table::get_root(buf)
-
   let json = @flatbuffers.JsonObjectBuilder::new()
     .add_string("name", root.get_string(0, ""))
     .add_int("hp", root.get_int32(1, 0))
     .add_int("mana", root.get_int32(2, 0))
-
   inspect(
     json.to_json_string(),
     content="{\"name\": \"Monster\", \"hp\": 100, \"mana\": 50}",
@@ -1134,10 +1104,8 @@ test "json vector to array" {
   builder.add_offset(0, vec)
   let table = builder.end_object()
   builder.finish(table)
-
   let buf = @flatbuffers.ByteBuffer::new(builder.to_fixed_array())
   let root = @flatbuffers.Table::get_root(buf)
-
   let arr_json = root.vector_int32_to_json(0)
   inspect(arr_json.to_string(), content="[10, 20, 30, 40]")
 }
@@ -1148,22 +1116,21 @@ test "json vector to array" {
 
 ///|
 test "object api schema creation" {
-  let schema = @flatbuffers.TableSchema::new(
-    "Person",
-    [
-      @flatbuffers.FieldDef::new("name", 0, @flatbuffers.FieldType::string()),
-      @flatbuffers.FieldDef::with_default_int("age", 1, @flatbuffers.FieldType::int32(), 0),
-      @flatbuffers.FieldDef::with_default_bool("active", 2, true),
-    ],
-  )
-
+  let schema = @flatbuffers.TableSchema::new("Person", [
+    @flatbuffers.FieldDef::new("name", 0, @flatbuffers.FieldType::string()),
+    @flatbuffers.FieldDef::with_default_int(
+      "age",
+      1,
+      @flatbuffers.FieldType::int32(),
+      0,
+    ),
+    @flatbuffers.FieldDef::with_default_bool("active", 2, true),
+  ])
   inspect(schema.name, content="Person")
   inspect(schema.field_count(), content="3")
-
   let name_field = schema.get_field("name")
   guard name_field is Some(f) else { fail("Expected name field") }
   inspect(f.slot, content="0")
-
   let missing = schema.get_field("missing")
   inspect(missing is None, content="true")
 }
@@ -1181,20 +1148,21 @@ test "object api reader" {
   builder.finish(table)
 
   // Define schema
-  let schema = @flatbuffers.TableSchema::new(
-    "Person",
-    [
-      @flatbuffers.FieldDef::new("name", 0, @flatbuffers.FieldType::string()),
-      @flatbuffers.FieldDef::with_default_int("age", 1, @flatbuffers.FieldType::int32(), 0),
-      @flatbuffers.FieldDef::with_default_bool("active", 2, false),
-    ],
-  )
+  let schema = @flatbuffers.TableSchema::new("Person", [
+    @flatbuffers.FieldDef::new("name", 0, @flatbuffers.FieldType::string()),
+    @flatbuffers.FieldDef::with_default_int(
+      "age",
+      1,
+      @flatbuffers.FieldType::int32(),
+      0,
+    ),
+    @flatbuffers.FieldDef::with_default_bool("active", 2, false),
+  ])
 
   // Read using ObjectReader
   let buf = @flatbuffers.ByteBuffer::new(builder.to_fixed_array())
   let root = @flatbuffers.Table::get_root(buf)
   let reader = @flatbuffers.ObjectReader::new(root, schema)
-
   inspect(reader.get_string("name"), content="Alice")
   inspect(reader.get_int32("age"), content="25")
   inspect(reader.get_bool("active"), content="true")
@@ -1205,20 +1173,27 @@ test "object api reader" {
 
 ///|
 test "object api builder" {
-  let schema = @flatbuffers.TableSchema::new(
-    "Monster",
-    [
-      @flatbuffers.FieldDef::new("name", 0, @flatbuffers.FieldType::string()),
-      @flatbuffers.FieldDef::with_default_int("hp", 1, @flatbuffers.FieldType::int16(), 100),
-      @flatbuffers.FieldDef::with_default_int("mana", 2, @flatbuffers.FieldType::int16(), 50),
-    ],
-  )
+  let schema = @flatbuffers.TableSchema::new("Monster", [
+    @flatbuffers.FieldDef::new("name", 0, @flatbuffers.FieldType::string()),
+    @flatbuffers.FieldDef::with_default_int(
+      "hp",
+      1,
+      @flatbuffers.FieldType::int16(),
+      100,
+    ),
+    @flatbuffers.FieldDef::with_default_int(
+      "mana",
+      2,
+      @flatbuffers.FieldType::int16(),
+      50,
+    ),
+  ])
 
   // Build using ObjectBuilder
   let builder = @flatbuffers.Builder::new()
-  let obj_builder = @flatbuffers.ObjectBuilder::new(builder, schema)
-    .set_string("name", "Goblin")
-
+  let obj_builder = @flatbuffers.ObjectBuilder::new(builder, schema).set_string(
+    "name", "Goblin",
+  )
   obj_builder.start()
   ignore(obj_builder.add_int16("hp", 30).add_int16("mana", 20))
   obj_builder.finish_buffer()
@@ -1227,7 +1202,6 @@ test "object api builder" {
   let buf = @flatbuffers.ByteBuffer::new(builder.to_fixed_array())
   let root = @flatbuffers.Table::get_root(buf)
   let reader = @flatbuffers.ObjectReader::new(root, schema)
-
   inspect(reader.get_string("name"), content="Goblin")
   inspect(reader.get_int16("hp"), content="30")
   inspect(reader.get_int16("mana"), content="20")
@@ -1245,19 +1219,20 @@ test "object api to json" {
   builder.finish(table)
 
   // Define schema
-  let schema = @flatbuffers.TableSchema::new(
-    "Monster",
-    [
-      @flatbuffers.FieldDef::new("name", 0, @flatbuffers.FieldType::string()),
-      @flatbuffers.FieldDef::with_default_int("hp", 1, @flatbuffers.FieldType::int32(), 0),
-    ],
-  )
+  let schema = @flatbuffers.TableSchema::new("Monster", [
+    @flatbuffers.FieldDef::new("name", 0, @flatbuffers.FieldType::string()),
+    @flatbuffers.FieldDef::with_default_int(
+      "hp",
+      1,
+      @flatbuffers.FieldType::int32(),
+      0,
+    ),
+  ])
 
   // Read and convert to JSON
   let buf = @flatbuffers.ByteBuffer::new(builder.to_fixed_array())
   let root = @flatbuffers.Table::get_root(buf)
   let reader = @flatbuffers.ObjectReader::new(root, schema)
-
   let json = reader.to_json()
   inspect(json.to_string(), content="{\"name\": \"Dragon\", \"hp\": 500}")
 }
@@ -1433,12 +1408,7 @@ test "FlexBuffer build and read string" {
 ///|
 test "FlexBuffer build and read vector of ints" {
   let builder = FlexBuilder::new()
-  let data = builder
-    .add_int(1L)
-    .add_int(2L)
-    .add_int(3L)
-    .end_vector(3)
-    .finish()
+  let data = builder.add_int(1L).add_int(2L).add_int(3L).end_vector(3).finish()
   let root = flex_parse(data)
   inspect(root.length(), content="3")
   inspect(root.get(0).as_int(), content="1")
@@ -1484,4 +1454,328 @@ test "FlexBuffer string type detection" {
   let data = builder.add_string("test").finish()
   let root = flex_parse(data)
   inspect(root.get_type(), content="String")
+}
+
+///|
+test "FlexBuffer blob" {
+  let builder = FlexBuilder::new()
+  let blob_data : FixedArray[Byte] = [b'\x01', b'\x02', b'\x03', b'\x04']
+  let data = builder.add_blob(blob_data).finish()
+  let root = flex_parse(data)
+  inspect(root.get_type(), content="Blob")
+  let result = root.as_blob()
+  inspect(result.length(), content="4")
+  inspect(result[0].to_int(), content="1")
+  inspect(result[3].to_int(), content="4")
+}
+
+///|
+test "FlexBuffer typed int vector" {
+  let builder = FlexBuilder::new()
+  let data = builder
+    .add_int(10L)
+    .add_int(20L)
+    .add_int(30L)
+    .end_int_vector(3)
+    .finish()
+  let root = flex_parse(data)
+  inspect(root.get_type(), content="VectorInt")
+  inspect(root.length(), content="3")
+  inspect(root.get(0).as_int(), content="10")
+  inspect(root.get(1).as_int(), content="20")
+  inspect(root.get(2).as_int(), content="30")
+}
+
+///|
+test "FlexBuffer typed float vector" {
+  let builder = FlexBuilder::new()
+  let data = builder.add_float(1.5).add_float(2.5).end_float_vector(2).finish()
+  let root = flex_parse(data)
+  inspect(root.get_type(), content="VectorFloat")
+  inspect(root.length(), content="2")
+  inspect(root.get(0).as_double(), content="1.5")
+  inspect(root.get(1).as_double(), content="2.5")
+}
+
+///|
+test "FlexBuffer simple map" {
+  let builder = FlexBuilder::new()
+  let data = builder
+    .add_key("name")
+    .add_string("Alice")
+    .add_key("age")
+    .add_int(30L)
+    .end_map(2)
+    .finish()
+  let root = flex_parse(data)
+  inspect(root.get_type(), content="Map")
+  inspect(root.is_map(), content="true")
+  inspect(root.length(), content="2")
+}
+
+///|
+test "FlexBuffer is_vector" {
+  let builder = FlexBuilder::new()
+  let data = builder.add_int(1L).add_int(2L).end_vector(2).finish()
+  let root = flex_parse(data)
+  inspect(root.is_vector(), content="true")
+  inspect(root.is_map(), content="false")
+}
+
+// =============================================================================
+// Mutation API Tests
+// =============================================================================
+
+///|
+test "Mutation API - mutate int32" {
+  // Build a simple table with one int32 field
+  let builder = Builder::new()
+  builder.start_object(1)
+  builder.add_int32(0, 42, 0)
+  let root_offset = builder.end_object()
+  builder.finish(root_offset)
+
+  // Read and verify initial value
+  let buf = ByteBuffer::new(builder.to_fixed_array())
+  let root = Table::get_root(buf)
+  inspect(root.get_int32(0, 0), content="42")
+
+  // Mutate the value
+  let mutated = root.mutate_int32(0, 100)
+  inspect(mutated, content="true")
+
+  // Verify the new value
+  inspect(root.get_int32(0, 0), content="100")
+}
+
+///|
+test "Mutation API - mutate bool" {
+  let builder = Builder::new()
+  builder.start_object(1)
+  builder.add_bool(0, true, false)
+  let root_offset = builder.end_object()
+  builder.finish(root_offset)
+  let buf = ByteBuffer::new(builder.to_fixed_array())
+  let root = Table::get_root(buf)
+  inspect(root.get_bool(0, false), content="true")
+  ignore(root.mutate_bool(0, false))
+  inspect(root.get_bool(0, true), content="false")
+}
+
+///|
+test "Mutation API - mutate float64" {
+  let builder = Builder::new()
+  builder.start_object(1)
+  builder.add_float64(0, 3.14, 0.0)
+  let root_offset = builder.end_object()
+  builder.finish(root_offset)
+  let buf = ByteBuffer::new(builder.to_fixed_array())
+  let root = Table::get_root(buf)
+  inspect(root.get_float64(0, 0.0), content="3.14")
+  ignore(root.mutate_float64(0, 2.718))
+  inspect(root.get_float64(0, 0.0), content="2.718")
+}
+
+///|
+test "Mutation API - mutate non-existent field returns false" {
+  let builder = Builder::new()
+  builder.start_object(1)
+  builder.add_int32(0, 42, 0)
+  let root_offset = builder.end_object()
+  builder.finish(root_offset)
+  let buf = ByteBuffer::new(builder.to_fixed_array())
+  let root = Table::get_root(buf)
+
+  // Try to mutate a field that doesn't exist
+  let mutated = root.mutate_int32(5, 100)
+  inspect(mutated, content="false")
+}
+
+///|
+test "Mutation API - mutate vector element" {
+  let builder = Builder::new()
+  let vec = builder.create_int32_vector([10, 20, 30])
+  builder.start_object(1)
+  builder.add_offset(0, vec)
+  let root_offset = builder.end_object()
+  builder.finish(root_offset)
+  let buf = ByteBuffer::new(builder.to_fixed_array())
+  let root = Table::get_root(buf)
+
+  // Verify initial values
+  inspect(root.get_vector_int32(0, 0), content="10")
+  inspect(root.get_vector_int32(0, 1), content="20")
+  inspect(root.get_vector_int32(0, 2), content="30")
+
+  // Mutate middle element
+  let mutated = root.mutate_vector_int32(0, 1, 200)
+  inspect(mutated, content="true")
+
+  // Verify mutation
+  inspect(root.get_vector_int32(0, 0), content="10")
+  inspect(root.get_vector_int32(0, 1), content="200")
+  inspect(root.get_vector_int32(0, 2), content="30")
+}
+
+// =============================================================================
+// Optional Scalar Tests
+// =============================================================================
+
+///|
+test "Optional scalar - present field returns Some" {
+  let builder = Builder::new()
+  builder.start_object(2)
+  builder.add_int32(0, 42, 0)
+  builder.add_bool(1, true, false)
+  let root_offset = builder.end_object()
+  builder.finish(root_offset)
+  let buf = ByteBuffer::new(builder.to_fixed_array())
+  let root = Table::get_root(buf)
+
+  // Present fields return Some
+  inspect(root.get_int32_optional(0), content="Some(42)")
+  inspect(root.get_bool_optional(1), content="Some(true)")
+}
+
+///|
+test "Optional scalar - absent field returns None" {
+  let builder = Builder::new()
+  builder.start_object(3)
+  builder.add_int32(0, 42, 0)
+  // Field 1 is not set
+  // Field 2 is not set
+  let root_offset = builder.end_object()
+  builder.finish(root_offset)
+  let buf = ByteBuffer::new(builder.to_fixed_array())
+  let root = Table::get_root(buf)
+
+  // Present field returns Some
+  inspect(root.get_int32_optional(0), content="Some(42)")
+  // Absent field returns None
+  inspect(root.get_int32_optional(1), content="None")
+  inspect(root.get_bool_optional(2), content="None")
+}
+
+///|
+test "Optional scalar - all types" {
+  let builder = Builder::new()
+  builder.start_object(6)
+  builder.add_int8(0, -10, 0)
+  builder.add_uint16(1, 1000, 0)
+  builder.add_int64(2, 9999999999L, 0L)
+  builder.add_float32(3, 1.5, 0.0)
+  builder.add_float64(4, 3.14159, 0.0)
+  // Field 5 is not set
+  let root_offset = builder.end_object()
+  builder.finish(root_offset)
+  let buf = ByteBuffer::new(builder.to_fixed_array())
+  let root = Table::get_root(buf)
+  inspect(root.get_int8_optional(0), content="Some(-10)")
+  inspect(root.get_uint16_optional(1), content="Some(1000)")
+  inspect(root.get_int64_optional(2), content="Some(9999999999)")
+  inspect(root.get_float32_optional(3), content="Some(1.5)")
+  inspect(root.get_float64_optional(4), content="Some(3.14159)")
+  inspect(root.get_float64_optional(5), content="None")
+}
+
+///|
+test "Optional string" {
+  let builder = Builder::new()
+  let name_offset = builder.create_string("Alice")
+  builder.start_object(2)
+  builder.add_offset(0, name_offset)
+  // Field 1 is not set (no string)
+  let root_offset = builder.end_object()
+  builder.finish(root_offset)
+  let buf = ByteBuffer::new(builder.to_fixed_array())
+  let root = Table::get_root(buf)
+  inspect(root.get_string_optional(0), content="Some(\"Alice\")")
+  inspect(root.get_string_optional(1), content="None")
+}
+
+// =============================================================================
+// Performance Optimization Tests
+// =============================================================================
+
+///|
+test "BuilderPool - acquire and release" {
+  let pool = BuilderPool::new(pool_size=2)
+
+  // Acquire a builder
+  let b1 = pool.acquire()
+  b1.start_object(1)
+  b1.add_int32(0, 42, 0)
+  let off1 = b1.end_object()
+  b1.finish(off1)
+
+  // Release it back
+  pool.release(b1)
+
+  // Acquire again - should get the same (reset) builder
+  let b2 = pool.acquire()
+  b2.start_object(1)
+  b2.add_int32(0, 100, 0)
+  let off2 = b2.end_object()
+  b2.finish(off2)
+  let buf = ByteBuffer::new(b2.to_fixed_array())
+  let root = Table::get_root(buf)
+  inspect(root.get_int32(0, 0), content="100")
+}
+
+///|
+test "CachedTableReader - fast reads" {
+  let builder = Builder::new()
+  let name = builder.create_string("test")
+  builder.start_object(4)
+  builder.add_int32(0, 42, 0)
+  builder.add_float64(1, 3.14, 0.0)
+  builder.add_bool(2, true, false)
+  builder.add_offset(3, name)
+  let root_offset = builder.end_object()
+  builder.finish(root_offset)
+  let buf = ByteBuffer::new(builder.to_fixed_array())
+  let table = Table::get_root(buf)
+
+  // Create cached reader for faster repeated access
+  let reader = CachedTableReader::new(table)
+  inspect(reader.get_int32(0, 0), content="42")
+  inspect(reader.get_float64(1, 0.0), content="3.14")
+  inspect(reader.get_bool(2, false), content="true")
+  inspect(reader.get_string(3, ""), content="test")
+}
+
+///|
+test "Batch vector read" {
+  let builder = Builder::new()
+  let vec = builder.create_int32_vector([10, 20, 30, 40, 50])
+  builder.start_object(1)
+  builder.add_offset(0, vec)
+  let root_offset = builder.end_object()
+  builder.finish(root_offset)
+  let buf = ByteBuffer::new(builder.to_fixed_array())
+  let root = Table::get_root(buf)
+
+  // Read batch of values
+  let batch = root.get_vector_int32_batch(0, 1, 3)
+  inspect(batch.length(), content="3")
+  inspect(batch[0], content="20")
+  inspect(batch[1], content="30")
+  inspect(batch[2], content="40")
+}
+
+///|
+test "Get vector bytes slice" {
+  let builder = Builder::new()
+  let data : FixedArray[Byte] = [b'\x01', b'\x02', b'\x03', b'\x04', b'\x05']
+  let vec = builder.create_byte_vector(data)
+  builder.start_object(1)
+  builder.add_offset(0, vec)
+  let root_offset = builder.end_object()
+  builder.finish(root_offset)
+  let buf = ByteBuffer::new(builder.to_fixed_array())
+  let root = Table::get_root(buf)
+  let slice = root.get_vector_bytes_slice(0)
+  inspect(slice.length(), content="5")
+  inspect(slice[0].to_int(), content="1")
+  inspect(slice[4].to_int(), content="5")
 }

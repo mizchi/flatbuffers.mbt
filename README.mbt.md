@@ -82,13 +82,17 @@ println(reader.get_int32("age"))    // 25
 Generate MoonBit code from FlatBuffers schema:
 
 ```moonbit
+///|
 let schema_text =
   #|table Monster {
   #|  name:string;
   #|  hp:short = 100;
   #|}
 
+///|
 let schema = @flatbuffers.parse_schema(schema_text)
+
+///|
 let code = @flatbuffers.generate_moonbit(schema)
 // Save `code` to a .mbt file
 ```
@@ -177,8 +181,11 @@ table.get_union_table(slot) -> Table?
 Reduce buffer size by deduplicating identical strings:
 
 ```moonbit
+///|
 let s1 = builder.create_shared_string("repeated")
-let s2 = builder.create_shared_string("repeated")  // Same offset as s1
+
+///|
+let s2 = builder.create_shared_string("repeated") // Same offset as s1
 ```
 
 #### Force Defaults
@@ -195,6 +202,7 @@ builder.add_int32(0, 0, 0)  // Serialized even though value == default
 Convert FlatBuffers to JSON:
 
 ```moonbit
+///|
 let json = @flatbuffers.JsonObjectBuilder::new()
   .add_string("name", table.get_string(0, ""))
   .add_int("hp", table.get_int32(1, 0))

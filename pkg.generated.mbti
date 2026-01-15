@@ -8,9 +8,38 @@ pub fn generate_moonbit(SchemaAst) -> String
 
 pub fn parse_schema(String) -> SchemaAst
 
+pub fn read_field_dynamic(Table, ReflectionField) -> JsonValue
+
+pub fn table_to_json_dynamic(Table, ReflectionObject) -> JsonValue
+
 // Errors
 
 // Types and methods
+pub enum BaseType {
+  None
+  UType
+  Bool
+  Byte
+  UByte
+  Short
+  UShort
+  Int
+  UInt
+  Long
+  ULong
+  Float
+  Double
+  String
+  Vector
+  Obj
+  Union
+  Array
+  MaxBaseType
+}
+pub fn BaseType::from_int(Int) -> Self
+pub fn BaseType::to_int(Self) -> Int
+pub impl Show for BaseType
+
 pub struct Builder {
   mut buf : FixedArray[Byte]
   mut head : Int
@@ -96,6 +125,14 @@ pub fn Builder::write_uint32(Self, UInt) -> Unit
 pub fn Builder::write_uint64(Self, UInt64) -> Unit
 pub fn Builder::write_uint8(Self, Int) -> Unit
 
+pub struct BuilderPool {
+  pool : Array[Builder]
+  default_size : Int
+}
+pub fn BuilderPool::acquire(Self) -> Builder
+pub fn BuilderPool::new(pool_size? : Int, default_buffer_size? : Int) -> Self
+pub fn BuilderPool::release(Self, Builder) -> Unit
+
 pub struct ByteBuffer {
   data : FixedArray[Byte]
   pos : Int
@@ -121,6 +158,28 @@ pub fn ByteBuffer::read_uint8(Self, Int) -> Int
 pub fn ByteBuffer::verify(Self) -> Bool
 pub fn ByteBuffer::verify_size_prefixed(Self) -> Bool
 pub fn ByteBuffer::verify_with_identifier(Self, String) -> Bool
+pub fn ByteBuffer::write_bool(Self, Int, Bool) -> Unit
+pub fn ByteBuffer::write_float32(Self, Int, Float) -> Unit
+pub fn ByteBuffer::write_float64(Self, Int, Double) -> Unit
+pub fn ByteBuffer::write_int16(Self, Int, Int) -> Unit
+pub fn ByteBuffer::write_int32(Self, Int, Int) -> Unit
+pub fn ByteBuffer::write_int64(Self, Int, Int64) -> Unit
+pub fn ByteBuffer::write_int8(Self, Int, Int) -> Unit
+pub fn ByteBuffer::write_uint16(Self, Int, Int) -> Unit
+pub fn ByteBuffer::write_uint32(Self, Int, UInt) -> Unit
+pub fn ByteBuffer::write_uint64(Self, Int, UInt64) -> Unit
+pub fn ByteBuffer::write_uint8(Self, Int, Int) -> Unit
+
+pub struct CachedTableReader {
+  table : Table
+  vtable_offset : Int
+  vtable_size : Int
+}
+pub fn CachedTableReader::get_bool(Self, Int, Bool) -> Bool
+pub fn CachedTableReader::get_float64(Self, Int, Double) -> Double
+pub fn CachedTableReader::get_int32(Self, Int, Int) -> Int
+pub fn CachedTableReader::get_string(Self, Int, String) -> String
+pub fn CachedTableReader::new(Table) -> Self
 
 pub struct EnumAst {
   name : String
@@ -128,6 +187,15 @@ pub struct EnumAst {
   bit_flags : Bool
   values : Array[EnumValueAst]
 }
+
+pub struct EnumVal {
+  buf : ByteBuffer
+  pos : Int
+}
+pub fn EnumVal::name(Self) -> String
+pub fn EnumVal::new(ByteBuffer, Int) -> Self
+pub fn EnumVal::union_type(Self) -> ReflectionType?
+pub fn EnumVal::value(Self) -> Int64
 
 pub struct EnumValueAst {
   name : String
@@ -195,14 +263,20 @@ pub struct FlexBuilder {
   buf : Array[Byte]
   stack : Array[FlexValue]
   string_pool : Map[String, Int]
+  key_pool : Map[String, Int]
   finished : Bool
 }
+pub fn FlexBuilder::add_blob(Self, FixedArray[Byte]) -> Self
 pub fn FlexBuilder::add_bool(Self, Bool) -> Self
 pub fn FlexBuilder::add_float(Self, Double) -> Self
 pub fn FlexBuilder::add_int(Self, Int64) -> Self
+pub fn FlexBuilder::add_key(Self, String) -> Self
 pub fn FlexBuilder::add_null(Self) -> Self
 pub fn FlexBuilder::add_string(Self, String) -> Self
 pub fn FlexBuilder::add_uint(Self, UInt64) -> Self
+pub fn FlexBuilder::end_float_vector(Self, Int) -> Self
+pub fn FlexBuilder::end_int_vector(Self, Int) -> Self
+pub fn FlexBuilder::end_map(Self, Int) -> Self
 pub fn FlexBuilder::end_vector(Self, Int) -> Self
 pub fn FlexBuilder::finish(Self) -> FixedArray[Byte]
 pub fn FlexBuilder::new() -> Self
@@ -223,8 +297,12 @@ pub fn FlexRef::as_string(Self) -> String
 pub fn FlexRef::as_uint64(Self) -> UInt64
 pub fn FlexRef::from_bytes(FixedArray[Byte]) -> Self
 pub fn FlexRef::get(Self, Int) -> Self
+pub fn FlexRef::get_by_key(Self, String) -> Self
 pub fn FlexRef::get_type(Self) -> FlexType
+pub fn FlexRef::is_map(Self) -> Bool
 pub fn FlexRef::is_null(Self) -> Bool
+pub fn FlexRef::is_vector(Self) -> Bool
+pub fn FlexRef::keys(Self) -> Array[String]
 pub fn FlexRef::length(Self) -> Int
 
 pub enum FlexType {
@@ -272,13 +350,15 @@ pub struct FlexValue {
   value_float : Double
   offset : Int
 }
+pub fn FlexValue::blob_ref(Int) -> Self
 pub fn FlexValue::bool_val(Bool) -> Self
 pub fn FlexValue::float(Double) -> Self
 pub fn FlexValue::int(Int64) -> Self
+pub fn FlexValue::key_ref(Int, Int) -> Self
 pub fn FlexValue::null() -> Self
 pub fn FlexValue::string_ref(Int, Int) -> Self
 pub fn FlexValue::uint(UInt64) -> Self
-pub fn FlexValue::vector_ref(Int, FlexType) -> Self
+pub fn FlexValue::vector_ref(Int, FlexType, Int) -> Self
 
 pub struct JsonObjectBuilder {
   fields : Array[(String, JsonValue)]
@@ -322,6 +402,14 @@ pub fn JsonValue::to_string(Self) -> String
 pub fn JsonValue::uint(UInt) -> Self
 pub fn JsonValue::uint64(UInt64) -> Self
 
+pub struct KeyValue {
+  buf : ByteBuffer
+  pos : Int
+}
+pub fn KeyValue::key(Self) -> String
+pub fn KeyValue::new(ByteBuffer, Int) -> Self
+pub fn KeyValue::value(Self) -> String
+
 pub struct ObjectBuilder {
   builder : Builder
   schema : TableSchema
@@ -358,6 +446,73 @@ pub fn ObjectReader::get_uint8(Self, String) -> Int
 pub fn ObjectReader::get_vector_length(Self, String) -> Int
 pub fn ObjectReader::new(Table, TableSchema) -> Self
 pub fn ObjectReader::to_json(Self) -> JsonValue
+
+pub struct ReflectionEnum {
+  buf : ByteBuffer
+  pos : Int
+}
+pub fn ReflectionEnum::is_union(Self) -> Bool
+pub fn ReflectionEnum::name(Self) -> String
+pub fn ReflectionEnum::new(ByteBuffer, Int) -> Self
+pub fn ReflectionEnum::underlying_type(Self) -> ReflectionType?
+pub fn ReflectionEnum::values(Self, Int) -> EnumVal?
+pub fn ReflectionEnum::values_length(Self) -> Int
+
+pub struct ReflectionField {
+  buf : ByteBuffer
+  pos : Int
+}
+pub fn ReflectionField::default_integer(Self) -> Int64
+pub fn ReflectionField::default_real(Self) -> Double
+pub fn ReflectionField::deprecated(Self) -> Bool
+pub fn ReflectionField::field_type(Self) -> ReflectionType?
+pub fn ReflectionField::id(Self) -> Int
+pub fn ReflectionField::key(Self) -> Bool
+pub fn ReflectionField::name(Self) -> String
+pub fn ReflectionField::new(ByteBuffer, Int) -> Self
+pub fn ReflectionField::offset(Self) -> Int
+pub fn ReflectionField::optional(Self) -> Bool
+pub fn ReflectionField::required(Self) -> Bool
+
+pub struct ReflectionObject {
+  buf : ByteBuffer
+  pos : Int
+}
+pub fn ReflectionObject::bytesize(Self) -> Int
+pub fn ReflectionObject::field_by_name(Self, String) -> ReflectionField?
+pub fn ReflectionObject::fields(Self, Int) -> ReflectionField?
+pub fn ReflectionObject::fields_length(Self) -> Int
+pub fn ReflectionObject::is_struct(Self) -> Bool
+pub fn ReflectionObject::minalign(Self) -> Int
+pub fn ReflectionObject::name(Self) -> String
+pub fn ReflectionObject::new(ByteBuffer, Int) -> Self
+
+pub struct ReflectionSchema {
+  buf : ByteBuffer
+}
+pub fn ReflectionSchema::enum_by_name(Self, String) -> ReflectionEnum?
+pub fn ReflectionSchema::enums(Self, Int) -> ReflectionEnum?
+pub fn ReflectionSchema::enums_length(Self) -> Int
+pub fn ReflectionSchema::file_ext(Self) -> String
+pub fn ReflectionSchema::file_ident(Self) -> String
+pub fn ReflectionSchema::from_bytes(FixedArray[Byte]) -> Self
+pub fn ReflectionSchema::is_valid(Self) -> Bool
+pub fn ReflectionSchema::object_by_name(Self, String) -> ReflectionObject?
+pub fn ReflectionSchema::objects(Self, Int) -> ReflectionObject?
+pub fn ReflectionSchema::objects_length(Self) -> Int
+pub fn ReflectionSchema::root_table(Self) -> ReflectionObject?
+
+pub struct ReflectionType {
+  buf : ByteBuffer
+  pos : Int
+}
+pub fn ReflectionType::base_size(Self) -> Int
+pub fn ReflectionType::base_type(Self) -> BaseType
+pub fn ReflectionType::element(Self) -> BaseType
+pub fn ReflectionType::element_size(Self) -> Int
+pub fn ReflectionType::fixed_length(Self) -> Int
+pub fn ReflectionType::index(Self) -> Int
+pub fn ReflectionType::new(ByteBuffer, Int) -> Self
 
 pub enum ScalarType {
   Bool
@@ -398,34 +553,63 @@ pub struct Table {
   pos : Int
 }
 pub fn Table::get_bool(Self, Int, Bool) -> Bool
+pub fn Table::get_bool_optional(Self, Int) -> Bool?
 pub fn Table::get_float32(Self, Int, Float) -> Float
+pub fn Table::get_float32_optional(Self, Int) -> Float?
 pub fn Table::get_float64(Self, Int, Double) -> Double
+pub fn Table::get_float64_optional(Self, Int) -> Double?
 pub fn Table::get_int16(Self, Int, Int) -> Int
+pub fn Table::get_int16_optional(Self, Int) -> Int?
 pub fn Table::get_int32(Self, Int, Int) -> Int
+pub fn Table::get_int32_optional(Self, Int) -> Int?
 pub fn Table::get_int64(Self, Int, Int64) -> Int64
+pub fn Table::get_int64_optional(Self, Int) -> Int64?
 pub fn Table::get_int8(Self, Int, Int) -> Int
+pub fn Table::get_int8_optional(Self, Int) -> Int?
 pub fn Table::get_nested_flatbuffer(Self, Int) -> ByteBuffer?
 pub fn Table::get_nested_root(Self, Int) -> Self?
 pub fn Table::get_root(ByteBuffer) -> Self
 pub fn Table::get_root_size_prefixed(ByteBuffer) -> Self
 pub fn Table::get_string(Self, Int, String) -> String
+pub fn Table::get_string_optional(Self, Int) -> String?
 pub fn Table::get_struct(Self, Int) -> Int?
 pub fn Table::get_table(Self, Int) -> Self?
 pub fn Table::get_table_offset(Self, Int) -> Int?
 pub fn Table::get_uint16(Self, Int, Int) -> Int
+pub fn Table::get_uint16_optional(Self, Int) -> Int?
 pub fn Table::get_uint32(Self, Int, UInt) -> UInt
+pub fn Table::get_uint32_optional(Self, Int) -> UInt?
 pub fn Table::get_uint64(Self, Int, UInt64) -> UInt64
+pub fn Table::get_uint64_optional(Self, Int) -> UInt64?
 pub fn Table::get_uint8(Self, Int, Int) -> Int
+pub fn Table::get_uint8_optional(Self, Int) -> Int?
 pub fn Table::get_union_table(Self, Int) -> Self?
 pub fn Table::get_union_type(Self, Int) -> Int
 pub fn Table::get_vector_byte(Self, Int, Int) -> Byte
+pub fn Table::get_vector_bytes_slice(Self, Int) -> FixedArray[Byte]
 pub fn Table::get_vector_float64(Self, Int, Int) -> Double
+pub fn Table::get_vector_float64_batch(Self, Int, Int, Int) -> Array[Double]
 pub fn Table::get_vector_int32(Self, Int, Int) -> Int
+pub fn Table::get_vector_int32_batch(Self, Int, Int, Int) -> Array[Int]
 pub fn Table::get_vector_length(Self, Int) -> Int
 pub fn Table::get_vector_start(Self, Int) -> Int
 pub fn Table::get_vector_string(Self, Int, Int) -> String
 pub fn Table::get_vector_table(Self, Int, Int) -> Self?
 pub fn Table::has_field(Self, Int) -> Bool
+pub fn Table::mutate_bool(Self, Int, Bool) -> Bool
+pub fn Table::mutate_float32(Self, Int, Float) -> Bool
+pub fn Table::mutate_float64(Self, Int, Double) -> Bool
+pub fn Table::mutate_int16(Self, Int, Int) -> Bool
+pub fn Table::mutate_int32(Self, Int, Int) -> Bool
+pub fn Table::mutate_int64(Self, Int, Int64) -> Bool
+pub fn Table::mutate_int8(Self, Int, Int) -> Bool
+pub fn Table::mutate_uint16(Self, Int, Int) -> Bool
+pub fn Table::mutate_uint32(Self, Int, UInt) -> Bool
+pub fn Table::mutate_uint64(Self, Int, UInt64) -> Bool
+pub fn Table::mutate_uint8(Self, Int, Int) -> Bool
+pub fn Table::mutate_vector_byte(Self, Int, Int, Byte) -> Bool
+pub fn Table::mutate_vector_float64(Self, Int, Int, Double) -> Bool
+pub fn Table::mutate_vector_int32(Self, Int, Int, Int) -> Bool
 pub fn Table::new(ByteBuffer, Int) -> Self
 pub fn Table::vector_byte_to_json(Self, Int) -> JsonValue
 pub fn Table::vector_int32_to_json(Self, Int) -> JsonValue

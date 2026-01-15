@@ -146,6 +146,126 @@ pub fn ByteBuffer::read_string(self : ByteBuffer, offset : Int) -> String {
   @utf8.decode_lossy(Bytes::from_array(bytes[:])[:])
 }
 
+// =============================================================================
+// Mutation API - Write methods for in-place buffer modification
+// =============================================================================
+
+///|
+/// Write a UInt8 at offset
+pub fn ByteBuffer::write_uint8(
+  self : ByteBuffer,
+  offset : Int,
+  value : Int,
+) -> Unit {
+  self.data[offset] = value.to_byte()
+}
+
+///|
+/// Write an Int8 at offset
+pub fn ByteBuffer::write_int8(
+  self : ByteBuffer,
+  offset : Int,
+  value : Int,
+) -> Unit {
+  self.data[offset] = value.to_byte()
+}
+
+///|
+/// Write a UInt16 (little-endian) at offset
+pub fn ByteBuffer::write_uint16(
+  self : ByteBuffer,
+  offset : Int,
+  value : Int,
+) -> Unit {
+  self.data[offset] = (value & 0xFF).to_byte()
+  self.data[offset + 1] = ((value >> 8) & 0xFF).to_byte()
+}
+
+///|
+/// Write an Int16 (little-endian) at offset
+pub fn ByteBuffer::write_int16(
+  self : ByteBuffer,
+  offset : Int,
+  value : Int,
+) -> Unit {
+  self.write_uint16(offset, value)
+}
+
+///|
+/// Write a UInt32 (little-endian) at offset
+pub fn ByteBuffer::write_uint32(
+  self : ByteBuffer,
+  offset : Int,
+  value : UInt,
+) -> Unit {
+  self.data[offset] = (value & 0xFFU).to_byte()
+  self.data[offset + 1] = ((value >> 8) & 0xFFU).to_byte()
+  self.data[offset + 2] = ((value >> 16) & 0xFFU).to_byte()
+  self.data[offset + 3] = ((value >> 24) & 0xFFU).to_byte()
+}
+
+///|
+/// Write an Int32 (little-endian) at offset
+pub fn ByteBuffer::write_int32(
+  self : ByteBuffer,
+  offset : Int,
+  value : Int,
+) -> Unit {
+  self.write_uint32(offset, value.reinterpret_as_uint())
+}
+
+///|
+/// Write a UInt64 (little-endian) at offset
+pub fn ByteBuffer::write_uint64(
+  self : ByteBuffer,
+  offset : Int,
+  value : UInt64,
+) -> Unit {
+  for i = 0; i < 8; i = i + 1 {
+    self.data[offset + i] = ((value >> (i * 8)) & 0xFFUL).to_byte()
+  }
+}
+
+///|
+/// Write an Int64 (little-endian) at offset
+pub fn ByteBuffer::write_int64(
+  self : ByteBuffer,
+  offset : Int,
+  value : Int64,
+) -> Unit {
+  self.write_uint64(offset, value.reinterpret_as_uint64())
+}
+
+///|
+/// Write a Float32 (little-endian) at offset
+pub fn ByteBuffer::write_float32(
+  self : ByteBuffer,
+  offset : Int,
+  value : Float,
+) -> Unit {
+  self.write_uint32(offset, value.reinterpret_as_uint())
+}
+
+///|
+/// Write a Float64/Double (little-endian) at offset
+pub fn ByteBuffer::write_float64(
+  self : ByteBuffer,
+  offset : Int,
+  value : Double,
+) -> Unit {
+  self.write_uint64(offset, value.reinterpret_as_uint64())
+}
+
+///|
+/// Write a Bool at offset
+pub fn ByteBuffer::write_bool(
+  self : ByteBuffer,
+  offset : Int,
+  value : Bool,
+) -> Unit {
+  self.data[offset] = if value { b'\x01' } else { b'\x00' }
+}
+
 ///|
 /// Get the root table offset from the buffer start
 pub fn ByteBuffer::get_root_offset(self : ByteBuffer) -> Int {
@@ -975,6 +1095,144 @@ pub fn Table::get_string(
   }
 }
 
+// =============================================================================
+// Optional Scalar Getters - Return None if field is not present
+// =============================================================================
+
+///|
+/// Get an optional boolean field (returns None if not present)
+pub fn Table::get_bool_optional(self : Table, field_slot : Int) -> Bool? {
+  let offset = self.vtable_offset(size_voffset * (2 + field_slot))
+  if offset != 0 {
+    Some(self.buf.read_uint8(self.pos + offset) != 0)
+  } else {
+    None
+  }
+}
+
+///|
+/// Get an optional UInt8 field
+pub fn Table::get_uint8_optional(self : Table, field_slot : Int) -> Int? {
+  let offset = self.vtable_offset(size_voffset * (2 + field_slot))
+  if offset != 0 {
+    Some(self.buf.read_uint8(self.pos + offset))
+  } else {
+    None
+  }
+}
+
+///|
+/// Get an optional Int8 field
+pub fn Table::get_int8_optional(self : Table, field_slot : Int) -> Int? {
+  let offset = self.vtable_offset(size_voffset * (2 + field_slot))
+  if offset != 0 {
+    Some(self.buf.read_int8(self.pos + offset))
+  } else {
+    None
+  }
+}
+
+///|
+/// Get an optional UInt16 field
+pub fn Table::get_uint16_optional(self : Table, field_slot : Int) -> Int? {
+  let offset = self.vtable_offset(size_voffset * (2 + field_slot))
+  if offset != 0 {
+    Some(self.buf.read_uint16(self.pos + offset))
+  } else {
+    None
+  }
+}
+
+///|
+/// Get an optional Int16 field
+pub fn Table::get_int16_optional(self : Table, field_slot : Int) -> Int? {
+  let offset = self.vtable_offset(size_voffset * (2 + field_slot))
+  if offset != 0 {
+    Some(self.buf.read_int16(self.pos + offset))
+  } else {
+    None
+  }
+}
+
+///|
+/// Get an optional UInt32 field
+pub fn Table::get_uint32_optional(self : Table, field_slot : Int) -> UInt? {
+  let offset = self.vtable_offset(size_voffset * (2 + field_slot))
+  if offset != 0 {
+    Some(self.buf.read_uint32(self.pos + offset))
+  } else {
+    None
+  }
+}
+
+///|
+/// Get an optional Int32 field
+pub fn Table::get_int32_optional(self : Table, field_slot : Int) -> Int? {
+  let offset = self.vtable_offset(size_voffset * (2 + field_slot))
+  if offset != 0 {
+    Some(self.buf.read_int32(self.pos + offset))
+  } else {
+    None
+  }
+}
+
+///|
+/// Get an optional UInt64 field
+pub fn Table::get_uint64_optional(self : Table, field_slot : Int) -> UInt64? {
+  let offset = self.vtable_offset(size_voffset * (2 + field_slot))
+  if offset != 0 {
+    Some(self.buf.read_uint64(self.pos + offset))
+  } else {
+    None
+  }
+}
+
+///|
+/// Get an optional Int64 field
+pub fn Table::get_int64_optional(self : Table, field_slot : Int) -> Int64? {
+  let offset = self.vtable_offset(size_voffset * (2 + field_slot))
+  if offset != 0 {
+    Some(self.buf.read_int64(self.pos + offset))
+  } else {
+    None
+  }
+}
+
+///|
+/// Get an optional Float32 field
+pub fn Table::get_float32_optional(self : Table, field_slot : Int) -> Float? {
+  let offset = self.vtable_offset(size_voffset * (2 + field_slot))
+  if offset != 0 {
+    Some(self.buf.read_float32(self.pos + offset))
+  } else {
+    None
+  }
+}
+
+///|
+/// Get an optional Float64 field
+pub fn Table::get_float64_optional(self : Table, field_slot : Int) -> Double? {
+  let offset = self.vtable_offset(size_voffset * (2 + field_slot))
+  if offset != 0 {
+    Some(self.buf.read_float64(self.pos + offset))
+  } else {
+    None
+  }
+}
+
+///|
+/// Get an optional string field
+pub fn Table::get_string_optional(self : Table, field_slot : Int) -> String? {
+  let offset = self.vtable_offset(size_voffset * (2 + field_slot))
+  if offset != 0 {
+    let string_offset = self.pos + offset
+    let indirect = self.buf.read_uint32(string_offset).reinterpret_as_int()
+    Some(self.buf.read_string(string_offset + indirect))
+  } else {
+    None
+  }
+}
+
 ///|
 /// Get the offset to a nested table field
 pub fn Table::get_table_offset(self : Table, field_slot : Int) -> Int? {
@@ -1420,7 +1678,7 @@ pub fn Builder::add_union(
   type_slot : Int,
   type_value : Int,
   value_slot : Int,
-  table_offset : Int
+  table_offset : Int,
 ) -> Unit {
   // Only add if type is not NONE (0)
   if type_value != 0 {
@@ -1445,6 +1703,218 @@ pub fn Table::get_union_table(self : Table, value_slot : Int) -> Table? {
   }
   let indirect = self.buf.read_uint32(self.pos + offset).reinterpret_as_int()
   Some(Table::new(self.buf, self.pos + offset + indirect))
+}
+
+// =============================================================================
+// Mutation API - In-place modification of scalar fields
+// =============================================================================
+
+///|
+/// Mutate a boolean field in-place
+/// Returns true if the field exists and was mutated
+pub fn Table::mutate_bool(self : Table, field_slot : Int, value : Bool) -> Bool {
+  let offset = self.vtable_offset(size_voffset * (2 + field_slot))
+  if offset != 0 {
+    self.buf.write_bool(self.pos + offset, value)
+    true
+  } else {
+    false
+  }
+}
+
+///|
+/// Mutate a UInt8 field in-place
+pub fn Table::mutate_uint8(self : Table, field_slot : Int, value : Int) -> Bool {
+  let offset = self.vtable_offset(size_voffset * (2 + field_slot))
+  if offset != 0 {
+    self.buf.write_uint8(self.pos + offset, value)
+    true
+  } else {
+    false
+  }
+}
+
+///|
+/// Mutate an Int8 field in-place
+pub fn Table::mutate_int8(self : Table, field_slot : Int, value : Int) -> Bool {
+  let offset = self.vtable_offset(size_voffset * (2 + field_slot))
+  if offset != 0 {
+    self.buf.write_int8(self.pos + offset, value)
+    true
+  } else {
+    false
+  }
+}
+
+///|
+/// Mutate a UInt16 field in-place
+pub fn Table::mutate_uint16(
+  self : Table,
+  field_slot : Int,
+  value : Int,
+) -> Bool {
+  let offset = self.vtable_offset(size_voffset * (2 + field_slot))
+  if offset != 0 {
+    self.buf.write_uint16(self.pos + offset, value)
+    true
+  } else {
+    false
+  }
+}
+
+///|
+/// Mutate an Int16 field in-place
+pub fn Table::mutate_int16(self : Table, field_slot : Int, value : Int) -> Bool {
+  let offset = self.vtable_offset(size_voffset * (2 + field_slot))
+  if offset != 0 {
+    self.buf.write_int16(self.pos + offset, value)
+    true
+  } else {
+    false
+  }
+}
+
+///|
+/// Mutate a UInt32 field in-place
+pub fn Table::mutate_uint32(
+  self : Table,
+  field_slot : Int,
+  value : UInt,
+) -> Bool {
+  let offset = self.vtable_offset(size_voffset * (2 + field_slot))
+  if offset != 0 {
+    self.buf.write_uint32(self.pos + offset, value)
+    true
+  } else {
+    false
+  }
+}
+
+///|
+/// Mutate an Int32 field in-place
+pub fn Table::mutate_int32(self : Table, field_slot : Int, value : Int) -> Bool {
+  let offset = self.vtable_offset(size_voffset * (2 + field_slot))
+  if offset != 0 {
+    self.buf.write_int32(self.pos + offset, value)
+    true
+  } else {
+    false
+  }
+}
+
+///|
+/// Mutate a UInt64 field in-place
+pub fn Table::mutate_uint64(
+  self : Table,
+  field_slot : Int,
+  value : UInt64,
+) -> Bool {
+  let offset = self.vtable_offset(size_voffset * (2 + field_slot))
+  if offset != 0 {
+    self.buf.write_uint64(self.pos + offset, value)
+    true
+  } else {
+    false
+  }
+}
+
+///|
+/// Mutate an Int64 field in-place
+pub fn Table::mutate_int64(
+  self : Table,
+  field_slot : Int,
+  value : Int64,
+) -> Bool {
+  let offset = self.vtable_offset(size_voffset * (2 + field_slot))
+  if offset != 0 {
+    self.buf.write_int64(self.pos + offset, value)
+    true
+  } else {
+    false
+  }
+}
+
+///|
+/// Mutate a Float32 field in-place
+pub fn Table::mutate_float32(
+  self : Table,
+  field_slot : Int,
+  value : Float,
+) -> Bool {
+  let offset = self.vtable_offset(size_voffset * (2 + field_slot))
+  if offset != 0 {
+    self.buf.write_float32(self.pos + offset, value)
+    true
+  } else {
+    false
+  }
+}
+
+///|
+/// Mutate a Float64 field in-place
+pub fn Table::mutate_float64(
+  self : Table,
+  field_slot : Int,
+  value : Double,
+) -> Bool {
+  let offset = self.vtable_offset(size_voffset * (2 + field_slot))
+  if offset != 0 {
+    self.buf.write_float64(self.pos + offset, value)
+    true
+  } else {
+    false
+  }
+}
+
+///|
+/// Mutate an element in an Int32 vector
+pub fn Table::mutate_vector_int32(
+  self : Table,
+  field_slot : Int,
+  index : Int,
+  value : Int,
+) -> Bool {
+  let start = self.get_vector_start(field_slot)
+  if start != 0 && index >= 0 && index < self.get_vector_length(field_slot) {
+    self.buf.write_int32(start + index * 4, value)
+    true
+  } else {
+    false
+  }
+}
+
+///|
+/// Mutate an element in a Float64 vector
+pub fn Table::mutate_vector_float64(
+  self : Table,
+  field_slot : Int,
+  index : Int,
+  value : Double,
+) -> Bool {
+  let start = self.get_vector_start(field_slot)
+  if start != 0 && index >= 0 && index < self.get_vector_length(field_slot) {
+    self.buf.write_float64(start + index * 8, value)
+    true
+  } else {
+    false
+  }
+}
+
+///|
+/// Mutate an element in a byte vector
+pub fn Table::mutate_vector_byte(
+  self : Table,
+  field_slot : Int,
+  index : Int,
+  value : Byte,
+) -> Bool {
+  let start = self.get_vector_start(field_slot)
+  if start != 0 && index >= 0 && index < self.get_vector_length(field_slot) {
+    self.buf.data[start + index] = value
+    true
+  } else {
+    false
+  }
 }
 
 // =============================================================================
@@ -1481,7 +1951,7 @@ pub fn VerifierOptions::default() -> VerifierOptions {
 pub fn VerifierOptions::new(
   max_depth : Int,
   max_tables : Int,
-  check_alignment : Bool
+  check_alignment : Bool,
 ) -> VerifierOptions {
   { max_depth, max_tables, check_alignment }
 }
@@ -1518,10 +1988,10 @@ pub fn Verifier::verify_range(self : Verifier, start : Int, len : Int) -> Bool {
 pub fn Verifier::verify_alignment(
   self : Verifier,
   pos : Int,
-  align : Int
+  align : Int,
 ) -> Bool {
   if self.opts.check_alignment {
-    pos.land(align - 1) == 0
+    (pos & (align - 1)) == 0
   } else {
     true
   }
@@ -1529,11 +1999,7 @@ pub fn Verifier::verify_alignment(
 
 ///|
 /// Verify a scalar at position
-pub fn Verifier::verify_scalar(
-  self : Verifier,
-  pos : Int,
-  size : Int
-) -> Bool {
+pub fn Verifier::verify_scalar(self : Verifier, pos : Int, size : Int) -> Bool {
   self.verify_alignment(pos, size) && self.verify_range(pos, size)
 }
 
@@ -1558,7 +2024,7 @@ pub fn Verifier::verify_string(self : Verifier, pos : Int) -> Bool {
 pub fn Verifier::verify_vector(
   self : Verifier,
   pos : Int,
-  elem_size : Int
+  elem_size : Int,
 ) -> Bool {
   // Check we can read the length
   if not(self.verify_range(pos, size_uoffset)) {
@@ -1636,7 +2102,7 @@ pub fn Verifier::verify_buffer(self : Verifier) -> Bool {
 /// Verify a buffer with file identifier
 pub fn Verifier::verify_buffer_with_identifier(
   self : Verifier,
-  identifier : String
+  identifier : String,
 ) -> Bool {
   // Check minimum size (root offset + identifier)
   if not(self.verify_range(0, size_uoffset + file_identifier_size)) {
@@ -1687,7 +2153,7 @@ pub fn ByteBuffer::verify(self : ByteBuffer) -> Bool {
 /// Verify a buffer with identifier (convenience function)
 pub fn ByteBuffer::verify_with_identifier(
   self : ByteBuffer,
-  identifier : String
+  identifier : String,
 ) -> Bool {
   let verifier = Verifier::from_buffer(self)
   verifier.verify_buffer_with_identifier(identifier)
@@ -1716,7 +2182,7 @@ pub fn ByteBuffer::verify_size_prefixed(self : ByteBuffer) -> Bool {
 /// Returns an offset to use with add_offset.
 pub fn Builder::create_nested_flatbuffer(
   self : Builder,
-  nested_bytes : FixedArray[Byte]
+  nested_bytes : FixedArray[Byte],
 ) -> Int {
   self.create_byte_vector(nested_bytes)
 }
@@ -1726,7 +2192,7 @@ pub fn Builder::create_nested_flatbuffer(
 /// This is a convenience method that gets the bytes from the builder.
 pub fn Builder::create_nested_flatbuffer_from_builder(
   self : Builder,
-  nested_builder : Builder
+  nested_builder : Builder,
 ) -> Int {
   self.create_nested_flatbuffer(nested_builder.to_fixed_array())
 }
@@ -1735,7 +2201,10 @@ pub fn Builder::create_nested_flatbuffer_from_builder(
 /// Get a nested FlatBuffer from a table field.
 /// Returns a ByteBuffer that can be used to read the nested data.
 /// Returns None if the field is not present.
-pub fn Table::get_nested_flatbuffer(self : Table, field_slot : Int) -> ByteBuffer? {
+pub fn Table::get_nested_flatbuffer(
+  self : Table,
+  field_slot : Int,
+) -> ByteBuffer? {
   let vec_offset = self.vtable_offset(size_voffset * (2 + field_slot))
   if vec_offset == 0 {
     return None
@@ -1770,7 +2239,7 @@ pub fn Table::get_nested_root(self : Table, field_slot : Int) -> Table? {
 pub fn Table::verify_nested_flatbuffer(
   self : Table,
   field_slot : Int,
-  verifier : Verifier
+  verifier : Verifier,
 ) -> Bool {
   match self.get_nested_flatbuffer(field_slot) {
     Some(nested_buf) => {
@@ -1933,7 +2402,7 @@ pub fn JsonObjectBuilder::new() -> JsonObjectBuilder {
 /// Add a null field
 pub fn JsonObjectBuilder::add_null(
   self : JsonObjectBuilder,
-  name : String
+  name : String,
 ) -> JsonObjectBuilder {
   self.fields.push((name, Null))
   self
@@ -1944,7 +2413,7 @@ pub fn JsonObjectBuilder::add_null(
 pub fn JsonObjectBuilder::add_bool(
   self : JsonObjectBuilder,
   name : String,
-  value : Bool
+  value : Bool,
 ) -> JsonObjectBuilder {
   self.fields.push((name, Bool(value)))
   self
@@ -1955,7 +2424,7 @@ pub fn JsonObjectBuilder::add_bool(
 pub fn JsonObjectBuilder::add_int(
   self : JsonObjectBuilder,
   name : String,
-  value : Int
+  value : Int,
 ) -> JsonObjectBuilder {
   self.fields.push((name, Int(value)))
   self
@@ -1966,7 +2435,7 @@ pub fn JsonObjectBuilder::add_int(
 pub fn JsonObjectBuilder::add_int64(
   self : JsonObjectBuilder,
   name : String,
-  value : Int64
+  value : Int64,
 ) -> JsonObjectBuilder {
   self.fields.push((name, Int64(value)))
   self
@@ -1977,7 +2446,7 @@ pub fn JsonObjectBuilder::add_int64(
 pub fn JsonObjectBuilder::add_uint(
   self : JsonObjectBuilder,
   name : String,
-  value : UInt
+  value : UInt,
 ) -> JsonObjectBuilder {
   self.fields.push((name, UInt(value)))
   self
@@ -1988,7 +2457,7 @@ pub fn JsonObjectBuilder::add_uint(
 pub fn JsonObjectBuilder::add_uint64(
   self : JsonObjectBuilder,
   name : String,
-  value : UInt64
+  value : UInt64,
 ) -> JsonObjectBuilder {
   self.fields.push((name, UInt64(value)))
   self
@@ -1999,7 +2468,7 @@ pub fn JsonObjectBuilder::add_uint64(
 pub fn JsonObjectBuilder::add_float(
   self : JsonObjectBuilder,
   name : String,
-  value : Double
+  value : Double,
 ) -> JsonObjectBuilder {
   self.fields.push((name, Float(value)))
   self
@@ -2010,7 +2479,7 @@ pub fn JsonObjectBuilder::add_float(
 pub fn JsonObjectBuilder::add_string(
   self : JsonObjectBuilder,
   name : String,
-  value : String
+  value : String,
 ) -> JsonObjectBuilder {
   self.fields.push((name, String(value)))
   self
@@ -2021,7 +2490,7 @@ pub fn JsonObjectBuilder::add_string(
 pub fn JsonObjectBuilder::add_array(
   self : JsonObjectBuilder,
   name : String,
-  value : Array[JsonValue]
+  value : Array[JsonValue],
 ) -> JsonObjectBuilder {
   self.fields.push((name, Array(value)))
   self
@@ -2032,7 +2501,7 @@ pub fn JsonObjectBuilder::add_array(
 pub fn JsonObjectBuilder::add_object(
   self : JsonObjectBuilder,
   name : String,
-  value : JsonObjectBuilder
+  value : JsonObjectBuilder,
 ) -> JsonObjectBuilder {
   self.fields.push((name, Object(value.fields)))
   self
@@ -2043,7 +2512,7 @@ pub fn JsonObjectBuilder::add_object(
 pub fn JsonObjectBuilder::add_value(
   self : JsonObjectBuilder,
   name : String,
-  value : JsonValue
+  value : JsonValue,
 ) -> JsonObjectBuilder {
   self.fields.push((name, value))
   self
@@ -2067,10 +2536,7 @@ pub fn JsonObjectBuilder::to_json_string(self : JsonObjectBuilder) -> String {
 
 ///|
 /// Convert an int vector to JSON array
-pub fn Table::vector_int32_to_json(
-  self : Table,
-  slot : Int
-) -> JsonValue {
+pub fn Table::vector_int32_to_json(self : Table, slot : Int) -> JsonValue {
   let len = self.get_vector_length(slot)
   if len == 0 {
     return Array([])
@@ -2084,10 +2550,7 @@ pub fn Table::vector_int32_to_json(
 
 ///|
 /// Convert a byte vector to JSON array
-pub fn Table::vector_byte_to_json(
-  self : Table,
-  slot : Int
-) -> JsonValue {
+pub fn Table::vector_byte_to_json(self : Table, slot : Int) -> JsonValue {
   let len = self.get_vector_length(slot)
   if len == 0 {
     return Array([])
@@ -2211,7 +2674,7 @@ pub struct FieldDef {
 pub fn FieldDef::new(
   name : String,
   slot : Int,
-  field_type : FieldType
+  field_type : FieldType,
 ) -> FieldDef {
   { name, slot, field_type, default_int: 0, default_bool: false }
 }
@@ -2222,7 +2685,7 @@ pub fn FieldDef::with_default_int(
   name : String,
   slot : Int,
   field_type : FieldType,
-  default : Int
+  default : Int,
 ) -> FieldDef {
   { name, slot, field_type, default_int: default, default_bool: false }
 }
@@ -2232,7 +2695,7 @@ pub fn FieldDef::with_default_int(
 pub fn FieldDef::with_default_bool(
   name : String,
   slot : Int,
-  default : Bool
+  default : Bool,
 ) -> FieldDef {
   { name, slot, field_type: Bool, default_int: 0, default_bool: default }
 }
@@ -2342,7 +2805,7 @@ pub fn ObjectReader::get_string(self : ObjectReader, name : String) -> String {
 /// Get vector length by field name
 pub fn ObjectReader::get_vector_length(
   self : ObjectReader,
-  name : String
+  name : String,
 ) -> Int {
   match self.schema.get_field(name) {
     Some(field) => self.table.get_vector_length(field.slot)
@@ -2354,7 +2817,7 @@ pub fn ObjectReader::get_vector_length(
 /// Get a nested table by name
 pub fn ObjectReader::get_table_field(
   self : ObjectReader,
-  name : String
+  name : String,
 ) -> Table? {
   match self.schema.get_field(name) {
     Some(field) => self.table.get_table(field.slot)
@@ -2375,7 +2838,12 @@ pub fn ObjectReader::to_json(self : ObjectReader) -> JsonValue {
       UInt16 => Int(self.table.get_uint16(field.slot, field.default_int))
       Int32 => Int(self.table.get_int32(field.slot, field.default_int))
       UInt32 =>
-        UInt(self.table.get_uint32(field.slot, field.default_int.reinterpret_as_uint()))
+        UInt(
+          self.table.get_uint32(
+            field.slot,
+            field.default_int.reinterpret_as_uint(),
+          ),
+        )
       Int64 =>
         Int64(self.table.get_int64(field.slot, field.default_int.to_int64()))
       UInt64 =>
@@ -2409,15 +2877,9 @@ pub struct ObjectBuilder {
 /// Create an object builder
 pub fn ObjectBuilder::new(
   builder : Builder,
-  schema : TableSchema
+  schema : TableSchema,
 ) -> ObjectBuilder {
-  {
-    builder,
-    schema,
-    string_offsets: {},
-    vector_offsets: {},
-    table_offsets: {},
-  }
+  { builder, schema, string_offsets: {}, vector_offsets: {}, table_offsets: {} }
 }
 
 ///|
@@ -2431,7 +2893,7 @@ pub fn ObjectBuilder::get_builder(self : ObjectBuilder) -> Builder {
 pub fn ObjectBuilder::set_string(
   self : ObjectBuilder,
   name : String,
-  value : String
+  value : String,
 ) -> ObjectBuilder {
   let offset = self.builder.create_string(value)
   self.string_offsets.set(name, offset)
@@ -2443,7 +2905,7 @@ pub fn ObjectBuilder::set_string(
 pub fn ObjectBuilder::set_shared_string(
   self : ObjectBuilder,
   name : String,
-  value : String
+  value : String,
 ) -> ObjectBuilder {
   let offset = self.builder.create_shared_string(value)
   self.string_offsets.set(name, offset)
@@ -2455,7 +2917,7 @@ pub fn ObjectBuilder::set_shared_string(
 pub fn ObjectBuilder::set_int32_vector(
   self : ObjectBuilder,
   name : String,
-  values : Array[Int]
+  values : Array[Int],
 ) -> ObjectBuilder {
   let offset = self.builder.create_int32_vector(values)
   self.vector_offsets.set(name, offset)
@@ -2467,7 +2929,7 @@ pub fn ObjectBuilder::set_int32_vector(
 pub fn ObjectBuilder::set_table_offset(
   self : ObjectBuilder,
   name : String,
-  offset : Int
+  offset : Int,
 ) -> ObjectBuilder {
   self.table_offsets.set(name, offset)
   self
@@ -2484,7 +2946,7 @@ pub fn ObjectBuilder::start(self : ObjectBuilder) -> Unit {
 pub fn ObjectBuilder::add_bool(
   self : ObjectBuilder,
   name : String,
-  value : Bool
+  value : Bool,
 ) -> ObjectBuilder {
   match self.schema.get_field(name) {
     Some(field) => self.builder.add_bool(field.slot, value, field.default_bool)
@@ -2498,7 +2960,7 @@ pub fn ObjectBuilder::add_bool(
 pub fn ObjectBuilder::add_int32(
   self : ObjectBuilder,
   name : String,
-  value : Int
+  value : Int,
 ) -> ObjectBuilder {
   match self.schema.get_field(name) {
     Some(field) => self.builder.add_int32(field.slot, value, field.default_int)
@@ -2512,7 +2974,7 @@ pub fn ObjectBuilder::add_int32(
 pub fn ObjectBuilder::add_uint8(
   self : ObjectBuilder,
   name : String,
-  value : Int
+  value : Int,
 ) -> ObjectBuilder {
   match self.schema.get_field(name) {
     Some(field) => self.builder.add_uint8(field.slot, value, field.default_int)
@@ -2526,7 +2988,7 @@ pub fn ObjectBuilder::add_uint8(
 pub fn ObjectBuilder::add_int16(
   self : ObjectBuilder,
   name : String,
-  value : Int
+  value : Int,
 ) -> ObjectBuilder {
   match self.schema.get_field(name) {
     Some(field) => self.builder.add_int16(field.slot, value, field.default_int)
@@ -2576,4 +3038,211 @@ pub fn ObjectBuilder::end(self : ObjectBuilder) -> Int {
 pub fn ObjectBuilder::finish_buffer(self : ObjectBuilder) -> Unit {
   let offset = self.end()
   self.builder.finish(offset)
+}
+
+// =============================================================================
+// Performance Optimizations
+// =============================================================================
+
+///|
+/// Builder pool for reusing builders to reduce allocations.
+/// Use when building many FlatBuffers in a loop.
+pub struct BuilderPool {
+  pool : Array[Builder]
+  default_size : Int
+}
+
+///|
+/// Create a new BuilderPool
+pub fn BuilderPool::new(
+  pool_size? : Int = 4,
+  default_buffer_size? : Int = 1024,
+) -> BuilderPool {
+  let pool : Array[Builder] = []
+  for i = 0; i < pool_size; i = i + 1 {
+    pool.push(Builder::new(initial_size=default_buffer_size))
+    ignore(i)
+  }
+  { pool, default_size: default_buffer_size }
+}
+
+///|
+/// Get a builder from the pool (or create a new one if empty)
+pub fn BuilderPool::acquire(self : BuilderPool) -> Builder {
+  match self.pool.pop() {
+    Some(b) => {
+      b.reset()
+      b
+    }
+    None => Builder::new(initial_size=self.default_size)
+  }
+}
+
+///|
+/// Return a builder to the pool
+pub fn BuilderPool::release(self : BuilderPool, builder : Builder) -> Unit {
+  builder.reset()
+  self.pool.push(builder)
+}
+
+///|
+/// Batch read multiple int32 values from a vector efficiently
+pub fn Table::get_vector_int32_batch(
+  self : Table,
+  field_slot : Int,
+  start_index : Int,
+  count : Int,
+) -> Array[Int] {
+  let result : Array[Int] = []
+  let vec_start = self.get_vector_start(field_slot)
+  let vec_len = self.get_vector_length(field_slot)
+  if vec_start == 0 {
+    return result
+  }
+  let end = if start_index + count > vec_len {
+    vec_len
+  } else {
+    start_index + count
+  }
+  for i = start_index; i < end; i = i + 1 {
+    result.push(self.buf.read_int32(vec_start + i * 4))
+  }
+  result
+}
+
+///|
+/// Batch read multiple float64 values from a vector efficiently
+pub fn Table::get_vector_float64_batch(
+  self : Table,
+  field_slot : Int,
+  start_index : Int,
+  count : Int,
+) -> Array[Double] {
+  let result : Array[Double] = []
+  let vec_start = self.get_vector_start(field_slot)
+  let vec_len = self.get_vector_length(field_slot)
+  if vec_start == 0 {
+    return result
+  }
+  let end = if start_index + count > vec_len {
+    vec_len
+  } else {
+    start_index + count
+  }
+  for i = start_index; i < end; i = i + 1 {
+    result.push(self.buf.read_float64(vec_start + i * 8))
+  }
+  result
+}
+
+///|
+/// Get entire byte vector as FixedArray (zero-copy slice)
+pub fn Table::get_vector_bytes_slice(
+  self : Table,
+  field_slot : Int,
+) -> FixedArray[Byte] {
+  let vec_start = self.get_vector_start(field_slot)
+  let vec_len = self.get_vector_length(field_slot)
+  if vec_start == 0 || vec_len == 0 {
+    return FixedArray::make(0, b'\x00')
+  }
+  let result : FixedArray[Byte] = FixedArray::make(vec_len, b'\x00')
+  for i = 0; i < vec_len; i = i + 1 {
+    result[i] = self.buf.data[vec_start + i]
+  }
+  result
+}
+
+///|
+/// Pre-compute vtable offset once and use for multiple field reads
+pub struct CachedTableReader {
+  table : Table
+  vtable_offset : Int
+  vtable_size : Int
+}
+
+///|
+/// Create a cached table reader for faster repeated field access
+pub fn CachedTableReader::new(table : Table) -> CachedTableReader {
+  let vtable_offset = table.pos - table.buf.read_int32(table.pos)
+  let vtable_size = table.buf.read_uint16(vtable_offset)
+  { table, vtable_offset, vtable_size }
+}
+
+///|
+/// Fast field offset lookup using cached vtable
+fn CachedTableReader::field_offset(
+  self : CachedTableReader,
+  field_slot : Int,
+) -> Int {
+  let field = size_voffset * (2 + field_slot)
+  if field < self.vtable_size {
+    self.table.buf.read_uint16(self.vtable_offset + field)
+  } else {
+    0
+  }
+}
+
+///|
+/// Fast int32 read
+pub fn CachedTableReader::get_int32(
+  self : CachedTableReader,
+  field_slot : Int,
+  default : Int,
+) -> Int {
+  let offset = self.field_offset(field_slot)
+  if offset != 0 {
+    self.table.buf.read_int32(self.table.pos + offset)
+  } else {
+    default
+  }
+}
+
+///|
+/// Fast float64 read
+pub fn CachedTableReader::get_float64(
+  self : CachedTableReader,
+  field_slot : Int,
+  default : Double,
+) -> Double {
+  let offset = self.field_offset(field_slot)
+  if offset != 0 {
+    self.table.buf.read_float64(self.table.pos + offset)
+  } else {
+    default
+  }
+}
+
+///|
+/// Fast bool read
+pub fn CachedTableReader::get_bool(
+  self : CachedTableReader,
+  field_slot : Int,
+  default : Bool,
+) -> Bool {
+  let offset = self.field_offset(field_slot)
+  if offset != 0 {
+    self.table.buf.read_uint8(self.table.pos + offset) != 0
+  } else {
+    default
+  }
+}
+
+///|
+/// Fast string read
+pub fn CachedTableReader::get_string(
+  self : CachedTableReader,
+  field_slot : Int,
+  default : String,
+) -> String {
+  let offset = self.field_offset(field_slot)
+  if offset != 0 {
+    let string_offset = self.table.pos + offset
+    let indirect = self.table.buf
+      .read_uint32(string_offset)
+      .reinterpret_as_int()
+    self.table.buf.read_string(string_offset + indirect)
+  } else {
+    default
+  }
 }
