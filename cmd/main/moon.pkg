@@ -1,0 +1,5 @@
+import { "mizchi/flatbuffers" as @lib }
+
+options(
+  "is-main": true,
+)
