@@ -1,0 +1,11 @@
+{
+  "is-main": true,
+  "import": [
+    {
+      "path": "mizchi/flatbuffers",
+      "alias": "lib"
+    },
+    "moonbitlang/x/fs",
+    "moonbitlang/x/sys"
+  ]
+}

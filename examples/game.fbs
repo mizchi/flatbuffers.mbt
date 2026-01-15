@@ -1,0 +1,43 @@
+// Example FlatBuffers schema with all features
+namespace MyGame;
+
+enum Color:ubyte {
+  Red = 0,
+  Green = 1,
+  Blue = 2
+}
+
+struct Vec3 {
+  x:float;
+  y:float;
+  z:float;
+}
+
+struct Vec2 {
+  x:float;
+  y:float;
+}
+
+table Weapon {
+  name:string;
+  damage:short;
+}
+
+table Shield {
+  name:string;
+  defense:short;
+}
+
+union Equipment { Weapon, Shield }
+
+table Monster {
+  pos:Vec3;
+  mana:short = 150;
+  hp:short = 100;
+  name:string;
+  color:Color = Blue;
+  inventory:[ubyte];
+  equipped:Equipment;
+}
+
+root_type Monster;
