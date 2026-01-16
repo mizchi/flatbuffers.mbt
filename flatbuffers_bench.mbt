@@ -115,7 +115,8 @@ fn prepare_nested_table_buffer() -> FixedArray[Byte] {
 /// Benchmark: Read operations
 test "bench_read" (b : @bench.T) {
   let simple_bytes = prepare_simple_table_buffer()
-  b.bench(name="simple_table", fn() {
+  // Read all fields
+  b.bench(name="table_all_fields", fn() {
     let buf = ByteBuffer::new(simple_bytes)
     let table = Table::get_root(buf)
     let name = table.get_string(0, "")
@@ -123,8 +124,16 @@ test "bench_read" (b : @bench.T) {
     let mana = table.get_int16(2, 0)
     b.keep((name, hp, mana))
   })
+  // Partial read: only one int field (FlatBuffers strength)
+  b.bench(name="table_one_field", fn() {
+    let buf = ByteBuffer::new(simple_bytes)
+    let table = Table::get_root(buf)
+    let hp = table.get_int32(1, 0)
+    b.keep(hp)
+  })
   let byte_vec_bytes = prepare_byte_vector_buffer()
-  b.bench(name="byte_vector", fn() {
+  // Read all 100 bytes one by one
+  b.bench(name="vec_all_100", fn() {
     let buf = ByteBuffer::new(byte_vec_bytes)
     let table = Table::get_root(buf)
     let len = table.get_vector_length(0)
@@ -134,7 +143,25 @@ test "bench_read" (b : @bench.T) {
     }
     b.keep(sum)
   })
-  b.bench(name="byte_vector_bulk", fn() {
+  // Partial read: only first 10 bytes (FlatBuffers strength)
+  b.bench(name="vec_first_10", fn() {
+    let buf = ByteBuffer::new(byte_vec_bytes)
+    let table = Table::get_root(buf)
+    let mut sum = 0
+    for i = 0; i < 10; i = i + 1 {
+      sum = sum + table.get_vector_byte(0, i).to_int()
+    }
+    b.keep(sum)
+  })
+  // Partial read: only first element
+  b.bench(name="vec_first_1", fn() {
+    let buf = ByteBuffer::new(byte_vec_bytes)
+    let table = Table::get_root(buf)
+    let first = table.get_vector_byte(0, 0)
+    b.keep(first)
+  })
+  // Bulk read all (optimized)
+  b.bench(name="vec_bulk_all", fn() {
     let buf = ByteBuffer::new(byte_vec_bytes)
     let table = Table::get_root(buf)
     let bytes = table.get_vector_bytes_slice(0)
