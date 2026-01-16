@@ -2341,49 +2341,84 @@ pub fn JsonValue::object(fields : Array[(String, JsonValue)]) -> JsonValue {
 ///|
 /// Convert a JsonValue to a JSON string
 pub fn JsonValue::to_string(self : JsonValue) -> String {
-  match self {
-    Null => "null"
-    Bool(b) => if b { "true" } else { "false" }
-    Int(n) => n.to_string()
-    Int64(n) => n.to_string()
-    UInt(n) => n.to_string()
-    UInt64(n) => n.to_string()
-    Float(f) => f.to_string()
-    String(s) => json_escape_string(s)
-    Array(arr) => {
-      let parts : Array[String] = []
-      for item in arr {
-        parts.push(item.to_string())
+  let buf = @buffer.new(size_hint=128)
+  json_value_to_buffer(buf, self)
+  buf.contents().to_unchecked_string()
+}
+
+///|
+/// Write JsonValue to buffer (internal helper)
+fn json_value_to_buffer(buf : @buffer.Buffer, value : JsonValue) -> Unit {
+  match value {
+    Null => buf.write_string("null")
+    Bool(b) =>
+      if b {
+        buf.write_string("true")
+      } else {
+        buf.write_string("false")
       }
-      "[" + parts.join(", ") + "]"
+    Int(n) => buf.write_string(n.to_string())
+    Int64(n) => buf.write_string(n.to_string())
+    UInt(n) => buf.write_string(n.to_string())
+    UInt64(n) => buf.write_string(n.to_string())
+    Float(f) => buf.write_string(f.to_string())
+    String(s) => json_escape_string_to_buffer(buf, s)
+    Array(arr) => {
+      buf.write_char('[')
+      for i, item in arr {
+        if i > 0 {
+          buf.write_string(", ")
+        }
+        json_value_to_buffer(buf, item)
+      }
+      buf.write_char(']')
     }
     Object(fields) => {
-      let parts : Array[String] = []
-      for pair in fields {
-        let (key, value) = pair
-        parts.push(json_escape_string(key) + ": " + value.to_string())
+      buf.write_char('{')
+      for i, pair in fields {
+        let (key, val) = pair
+        if i > 0 {
+          buf.write_string(", ")
+        }
+        json_escape_string_to_buffer(buf, key)
+        buf.write_string(": ")
+        json_value_to_buffer(buf, val)
       }
-      "{" + parts.join(", ") + "}"
+      buf.write_char('}')
     }
   }
 }
 
 ///|
-/// Escape a string for JSON output
-fn json_escape_string(s : String) -> String {
-  let result : Array[String] = ["\u{22}"]
+/// Write escaped string to buffer (internal helper)
+fn json_escape_string_to_buffer(buf : @buffer.Buffer, s : String) -> Unit {
+  buf.write_char('\u{22}')
   for c in s {
     match c {
-      '\u{22}' => result.push("\\\u{22}") // double quote
-      '\\' => result.push("\\\\")
-      '\n' => result.push("\\n")
-      '\r' => result.push("\\r")
-      '\t' => result.push("\\t")
-      _ => result.push(c.to_string())
+      '\u{22}' => {
+        buf.write_char('\\')
+        buf.write_char('\u{22}')
+      }
+      '\\' => {
+        buf.write_char('\\')
+        buf.write_char('\\')
+      }
+      '\n' => {
+        buf.write_char('\\')
+        buf.write_char('n')
+      }
+      '\r' => {
+        buf.write_char('\\')
+        buf.write_char('r')
+      }
+      '\t' => {
+        buf.write_char('\\')
+        buf.write_char('t')
+      }
+      _ => buf.write_char(c)
     }
   }
-  result.push("\u{22}")
-  result.join("")
+  buf.write_char('\u{22}')
 }
 
 ///|
@@ -3136,7 +3171,7 @@ pub fn Table::get_vector_float64_batch(
 }
 
 ///|
-/// Get entire byte vector as FixedArray (zero-copy slice)
+/// Get entire byte vector as FixedArray (optimized with blit)
 pub fn Table::get_vector_bytes_slice(
   self : Table,
   field_slot : Int,
@@ -3147,9 +3182,7 @@ pub fn Table::get_vector_bytes_slice(
     return FixedArray::make(0, b'\x00')
   }
   let result : FixedArray[Byte] = FixedArray::make(vec_len, b'\x00')
-  for i = 0; i < vec_len; i = i + 1 {
-    result[i] = self.buf.data[vec_start + i]
-  }
+  FixedArray::unsafe_blit(result, 0, self.buf.data, vec_start, vec_len)
   result
 }
 

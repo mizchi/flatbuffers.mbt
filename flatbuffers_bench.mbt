@@ -134,6 +134,16 @@ test "bench_read" (b : @bench.T) {
     }
     b.keep(sum)
   })
+  b.bench(name="byte_vector_bulk", fn() {
+    let buf = ByteBuffer::new(byte_vec_bytes)
+    let table = Table::get_root(buf)
+    let bytes = table.get_vector_bytes_slice(0)
+    let mut sum = 0
+    for b in bytes {
+      sum = sum + b.to_int()
+    }
+    b.keep(sum)
+  })
   let nested_bytes = prepare_nested_table_buffer()
   b.bench(name="nested_table", fn() {
     let buf = ByteBuffer::new(nested_bytes)
