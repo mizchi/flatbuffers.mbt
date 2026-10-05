@@ -1689,8 +1689,8 @@ test "Optional string" {
   builder.finish(root_offset)
   let buf = ByteBuffer::new(builder.to_fixed_array())
   let root = Table::get_root(buf)
-  inspect(root.get_string_optional(0), content="Some(\"Alice\")")
-  inspect(root.get_string_optional(1), content="None")
+  debug_inspect(root.get_string_optional(0), content="Some(\"Alice\")")
+  debug_inspect(root.get_string_optional(1), content="None")
 }
 
 // =============================================================================
@@ -1803,13 +1803,13 @@ test "Metadata operations" {
   let _ = meta.add("key2", "value2")
   let _ = meta.add("key1", "value1b")
   inspect(meta.len(), content="3")
-  inspect(meta.get("key1"), content="Some(\"value1\")")
-  inspect(meta.get("key2"), content="Some(\"value2\")")
-  inspect(meta.get("missing"), content="None")
+  debug_inspect(meta.get("key1"), content="Some(\"value1\")")
+  debug_inspect(meta.get("key2"), content="Some(\"value2\")")
+  debug_inspect(meta.get("missing"), content="None")
   inspect(meta.get_all("key1").length(), content="2")
   let meta2 = meta.remove("key1")
   inspect(meta2.len(), content="1")
-  inspect(meta2.get("key1"), content="None")
+  debug_inspect(meta2.get("key1"), content="None")
 }
 
 ///|

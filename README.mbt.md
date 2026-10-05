@@ -26,7 +26,7 @@ Add to your `moon.mod.json`:
 
 ### Basic Usage
 
-```moonbit
+```moonbit nocheck
 // Create a FlatBuffer
 let builder = @flatbuffers.Builder::new()
 
@@ -54,7 +54,7 @@ let age = root.get_int32(1, 0)      // 30
 
 ### Using Object API (Schema-based)
 
-```moonbit
+```moonbit nocheck
 // Define schema
 let schema = @flatbuffers.TableSchema::new("Person", [
   @flatbuffers.FieldDef::new("name", 0, @flatbuffers.FieldType::string()),
@@ -81,7 +81,7 @@ println(reader.get_int32("age"))    // 25
 
 Generate MoonBit code from FlatBuffers schema:
 
-```moonbit
+```moonbit nocheck
 ///|
 let schema_text =
   #|table Monster {
@@ -115,7 +115,7 @@ moon run cmd/codegen
 
 ### Builder Methods
 
-```moonbit
+```moonbit nocheck
 // Scalars
 builder.add_bool(slot, value, default)
 builder.add_int8(slot, value, default)
@@ -148,7 +148,7 @@ builder.finish_size_prefixed(root_offset)
 
 ### Table Reader Methods
 
-```moonbit
+```moonbit nocheck
 // Scalars
 table.get_bool(slot, default) -> Bool
 table.get_int8(slot, default) -> Int
@@ -180,7 +180,7 @@ table.get_union_table(slot) -> Table?
 
 Reduce buffer size by deduplicating identical strings:
 
-```moonbit
+```moonbit nocheck
 ///|
 let s1 = builder.create_shared_string("repeated")
 
@@ -192,7 +192,7 @@ let s2 = builder.create_shared_string("repeated") // Same offset as s1
 
 Serialize fields even when they equal the default value:
 
-```moonbit
+```moonbit nocheck
 builder.set_force_defaults(true)
 builder.add_int32(0, 0, 0)  // Serialized even though value == default
 ```
@@ -201,7 +201,7 @@ builder.add_int32(0, 0, 0)  // Serialized even though value == default
 
 Convert FlatBuffers to JSON:
 
-```moonbit
+```moonbit nocheck
 ///|
 let json = @flatbuffers.JsonObjectBuilder::new()
   .add_string("name", table.get_string(0, ""))
@@ -214,7 +214,7 @@ let json = @flatbuffers.JsonObjectBuilder::new()
 
 Validate buffer integrity before reading:
 
-```moonbit
+```moonbit nocheck
 let buf = @flatbuffers.ByteBuffer::new(data)
 if buf.verify() {
   let root = @flatbuffers.Table::get_root(buf)
@@ -226,7 +226,7 @@ if buf.verify() {
 
 Embed complete FlatBuffers inside other FlatBuffers:
 
-```moonbit
+```moonbit nocheck
 // Create nested buffer
 let inner_builder = @flatbuffers.Builder::new()
 // ... build inner ...

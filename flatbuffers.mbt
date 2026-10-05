@@ -23,7 +23,7 @@ pub struct ByteBuffer {
 ///|
 /// Create a new ByteBuffer from bytes
 pub fn ByteBuffer::new(data : FixedArray[Byte]) -> ByteBuffer {
-  { data, pos: 0 }
+  { data, pos: 0, }
 }
 
 ///|
@@ -909,7 +909,7 @@ pub struct Table {
 ///|
 /// Create a Table from a ByteBuffer at the given position
 pub fn Table::new(buf : ByteBuffer, pos : Int) -> Table {
-  { buf, pos }
+  { buf, pos, }
 }
 
 ///|
@@ -1943,7 +1943,7 @@ pub struct VerifierOptions {
 ///|
 /// Create default verifier options
 pub fn VerifierOptions::default() -> VerifierOptions {
-  { max_depth: 64, max_tables: 1000000, check_alignment: true }
+  { max_depth: 64, max_tables: 1000000, check_alignment: true, }
 }
 
 ///|
@@ -1953,7 +1953,7 @@ pub fn VerifierOptions::new(
   max_tables : Int,
   check_alignment : Bool,
 ) -> VerifierOptions {
-  { max_depth, max_tables, check_alignment }
+  { max_depth, max_tables, check_alignment, }
 }
 
 ///|
@@ -1968,7 +1968,7 @@ pub struct Verifier {
 ///|
 /// Create a new verifier
 pub fn Verifier::new(buf : ByteBuffer, opts : VerifierOptions) -> Verifier {
-  { buf, opts, depth: 0, num_tables: 0 }
+  { buf, opts, depth: 0, num_tables: 0, }
 }
 
 ///|
@@ -2430,7 +2430,7 @@ pub struct JsonObjectBuilder {
 ///|
 /// Create a new JSON object builder
 pub fn JsonObjectBuilder::new() -> JsonObjectBuilder {
-  { fields: [] }
+  { fields: [], }
 }
 
 ///|
@@ -2711,7 +2711,7 @@ pub fn FieldDef::new(
   slot : Int,
   field_type : FieldType,
 ) -> FieldDef {
-  { name, slot, field_type, default_int: 0, default_bool: false }
+  { name, slot, field_type, default_int: 0, default_bool: false, }
 }
 
 ///|
@@ -2722,7 +2722,7 @@ pub fn FieldDef::with_default_int(
   field_type : FieldType,
   default : Int,
 ) -> FieldDef {
-  { name, slot, field_type, default_int: default, default_bool: false }
+  { name, slot, field_type, default_int: default, default_bool: false, }
 }
 
 ///|
@@ -2732,7 +2732,7 @@ pub fn FieldDef::with_default_bool(
   slot : Int,
   default : Bool,
 ) -> FieldDef {
-  { name, slot, field_type: Bool, default_int: 0, default_bool: default }
+  { name, slot, field_type: Bool, default_int: 0, default_bool: default, }
 }
 
 ///|
@@ -2750,7 +2750,7 @@ pub fn TableSchema::new(name : String, fields : Array[FieldDef]) -> TableSchema 
   for i = 0; i < fields.length(); i = i + 1 {
     field_map.set(fields[i].name, i)
   }
-  { name, fields, field_map }
+  { name, fields, field_map, }
 }
 
 ///|
@@ -2782,7 +2782,7 @@ pub struct ObjectReader {
 ///|
 /// Create an object reader
 pub fn ObjectReader::new(table : Table, schema : TableSchema) -> ObjectReader {
-  { table, schema }
+  { table, schema, }
 }
 
 ///|
@@ -2914,7 +2914,13 @@ pub fn ObjectBuilder::new(
   builder : Builder,
   schema : TableSchema,
 ) -> ObjectBuilder {
-  { builder, schema, string_offsets: {}, vector_offsets: {}, table_offsets: {} }
+  {
+    builder,
+    schema,
+    string_offsets: {},
+    vector_offsets: {},
+    table_offsets: {},
+  }
 }
 
 ///|
@@ -3098,7 +3104,7 @@ pub fn BuilderPool::new(
     pool.push(Builder::new(initial_size=default_buffer_size))
     ignore(i)
   }
-  { pool, default_size: default_buffer_size }
+  { pool, default_size: default_buffer_size, }
 }
 
 ///|
@@ -3199,7 +3205,7 @@ pub struct CachedTableReader {
 pub fn CachedTableReader::new(table : Table) -> CachedTableReader {
   let vtable_offset = table.pos - table.buf.read_int32(table.pos)
   let vtable_size = table.buf.read_uint16(vtable_offset)
-  { table, vtable_offset, vtable_size }
+  { table, vtable_offset, vtable_size, }
 }
 
 ///|
