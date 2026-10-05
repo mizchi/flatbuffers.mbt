@@ -169,7 +169,7 @@ pub struct SchemaAst {
 
 ///|
 pub fn SchemaAst::new() -> SchemaAst {
-  { ns: "", enums: [], structs: [], tables: [], unions: [], root_type: None }
+  { ns: "", enums: [], structs: [], tables: [], unions: [], root_type: None, }
 }
 
 // =============================================================================
@@ -193,7 +193,7 @@ priv struct Parser {
 
 ///|
 fn Parser::new(input : String) -> Parser {
-  { input, pos: 0, line: 1, col: 1 }
+  { input, pos: 0, line: 1, col: 1, }
 }
 
 ///|
@@ -463,7 +463,7 @@ fn Parser::parse_field(self : Parser) -> FieldAst? {
   // Skip attributes like (deprecated, id: 1)
   self.skip_attributes()
   ignore(self.expect(';'))
-  Some({ name, field_type, default_value, deprecated: false, id: None })
+  Some({ name, field_type, default_value, deprecated: false, id: None, })
 }
 
 ///|
@@ -500,10 +500,10 @@ fn Parser::parse_enum(self : Parser) -> EnumAst? {
       break
     }
     let value = if self.expect('=') { Some(self.parse_number()) } else { None }
-    values.push({ name: value_name, value })
+    values.push({ name: value_name, value, })
     ignore(self.expect(','))
   }
-  Some({ name, base_type, bit_flags: false, values })
+  Some({ name, base_type, bit_flags: false, values, })
 }
 
 ///|
@@ -527,7 +527,7 @@ fn Parser::parse_struct(self : Parser) -> StructAst? {
       None => break
     }
   }
-  Some({ name, fields })
+  Some({ name, fields, })
 }
 
 ///|
@@ -551,7 +551,7 @@ fn Parser::parse_table(self : Parser) -> TableAst? {
       None => break
     }
   }
-  Some({ name, fields })
+  Some({ name, fields, })
 }
 
 ///|
@@ -582,7 +582,7 @@ fn Parser::parse_union(self : Parser) -> UnionAst? {
     }
     ignore(self.expect(','))
   }
-  Some({ name, types })
+  Some({ name, types, })
 }
 
 ///|

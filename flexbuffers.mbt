@@ -275,7 +275,7 @@ fn bytes_to_string(bytes : Array[Byte]) -> String {
 /// Create a FlexRef from raw bytes
 pub fn FlexRef::from_bytes(data : FixedArray[Byte]) -> FlexRef {
   if data.length() < 3 {
-    return { data, offset: 0, parent_width: 1, byte_width: 1, flex_type: Null }
+    return { data, offset: 0, parent_width: 1, byte_width: 1, flex_type: Null, }
   }
   // Last byte is the byte width
   let byte_width = data[data.length() - 1].to_int()
@@ -285,7 +285,7 @@ pub fn FlexRef::from_bytes(data : FixedArray[Byte]) -> FlexRef {
   let parent_width = 1 << (packed_type & 3)
   // Root offset is calculated from the end
   let offset = data.length() - byte_width - 2
-  { data, offset, parent_width, byte_width, flex_type }
+  { data, offset, parent_width, byte_width, flex_type, }
 }
 
 ///|
@@ -704,7 +704,7 @@ pub struct FlexBuilder {
 ///|
 /// Create a new FlexBuilder
 pub fn FlexBuilder::new() -> FlexBuilder {
-  { buf: [], stack: [], string_pool: {}, key_pool: {}, finished: false }
+  { buf: [], stack: [], string_pool: {}, key_pool: {}, finished: false, }
 }
 
 ///|

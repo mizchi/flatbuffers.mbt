@@ -35,10 +35,9 @@ pub enum BaseType {
   Union
   Array
   MaxBaseType
-}
+} derive(Show)
 pub fn BaseType::from_int(Int) -> Self
 pub fn BaseType::to_int(Self) -> Int
-pub impl Show for BaseType
 
 pub struct Builder {
   mut buf : FixedArray[Byte]
@@ -208,9 +207,7 @@ pub(all) enum ChannelState {
   Ready
   TransientFailure
   Shutdown
-}
-pub impl Eq for ChannelState
-pub impl Show for ChannelState
+} derive(Eq, Show)
 
 pub struct ClientContext {
   metadata : Metadata
@@ -399,13 +396,12 @@ pub enum FlexType {
   Blob
   Bool
   VectorBool
-}
+} derive(Show)
 pub fn FlexType::from_int(Int) -> Self
 pub fn FlexType::is_fixed_typed_vector(Self) -> Bool
 pub fn FlexType::is_inline(Self) -> Bool
 pub fn FlexType::is_typed_vector(Self) -> Bool
 pub fn FlexType::to_int(Self) -> Int
-pub impl Show for FlexType
 
 pub struct FlexValue {
   flex_type : FlexType
@@ -452,11 +448,9 @@ pub(all) enum GrpcStatus {
   Unavailable
   DataLoss
   Unauthenticated
-}
+} derive(Eq, Show)
 pub fn GrpcStatus::code(Self) -> Int
 pub fn GrpcStatus::from_code(Int) -> Self
-pub impl Eq for GrpcStatus
-pub impl Show for GrpcStatus
 
 pub struct HealthService {
   status_map : Array[(String, ServingStatus)]
@@ -541,18 +535,15 @@ pub struct MethodDescriptor {
   method_name : String
   method_type : MethodType
   full_path : String
-}
+} derive(Show)
 pub fn MethodDescriptor::new(String, String, MethodType) -> Self
-pub impl Show for MethodDescriptor
 
 pub(all) enum MethodType {
   Unary
   ServerStreaming
   ClientStreaming
   BidirectionalStreaming
-}
-pub impl Eq for MethodType
-pub impl Show for MethodType
+} derive(Eq, Show)
 
 pub struct ObjectBuilder {
   builder : Builder
@@ -727,21 +718,18 @@ pub fn[T] ServerStream::read(Self[T]) -> T?
 pub struct ServiceDescriptor {
   name : String
   methods : Array[MethodDescriptor]
-}
+} derive(Show)
 pub fn ServiceDescriptor::add_method(Self, MethodDescriptor) -> Self
 pub fn ServiceDescriptor::get_method(Self, String) -> MethodDescriptor?
 pub fn ServiceDescriptor::new(String) -> Self
-pub impl Show for ServiceDescriptor
 
 pub(all) enum ServingStatus {
   Unknown
   Serving
   NotServing
   ServiceUnknown
-}
+} derive(Eq, Show)
 pub fn ServingStatus::to_int(Self) -> Int
-pub impl Eq for ServingStatus
-pub impl Show for ServingStatus
 
 pub struct StructAst {
   name : String
@@ -866,4 +854,3 @@ pub fn VerifierOptions::new(Int, Int, Bool) -> Self
 // Type aliases
 
 // Traits
-

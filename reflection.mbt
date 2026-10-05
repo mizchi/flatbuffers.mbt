@@ -97,7 +97,7 @@ pub struct ReflectionType {
 
 ///|
 pub fn ReflectionType::new(buf : ByteBuffer, pos : Int) -> ReflectionType {
-  { buf, pos }
+  { buf, pos, }
 }
 
 ///|
@@ -155,7 +155,7 @@ pub struct KeyValue {
 
 ///|
 pub fn KeyValue::new(buf : ByteBuffer, pos : Int) -> KeyValue {
-  { buf, pos }
+  { buf, pos, }
 }
 
 ///|
@@ -183,7 +183,7 @@ pub struct EnumVal {
 
 ///|
 pub fn EnumVal::new(buf : ByteBuffer, pos : Int) -> EnumVal {
-  { buf, pos }
+  { buf, pos, }
 }
 
 ///|
@@ -221,7 +221,7 @@ pub struct ReflectionEnum {
 
 ///|
 pub fn ReflectionEnum::new(buf : ByteBuffer, pos : Int) -> ReflectionEnum {
-  { buf, pos }
+  { buf, pos, }
 }
 
 ///|
@@ -275,7 +275,7 @@ pub struct ReflectionField {
 
 ///|
 pub fn ReflectionField::new(buf : ByteBuffer, pos : Int) -> ReflectionField {
-  { buf, pos }
+  { buf, pos, }
 }
 
 ///|
@@ -354,7 +354,7 @@ pub struct ReflectionObject {
 
 ///|
 pub fn ReflectionObject::new(buf : ByteBuffer, pos : Int) -> ReflectionObject {
-  { buf, pos }
+  { buf, pos, }
 }
 
 ///|
@@ -430,7 +430,7 @@ pub struct ReflectionSchema {
 pub fn ReflectionSchema::from_bytes(
   data : FixedArray[Byte],
 ) -> ReflectionSchema {
-  { buf: ByteBuffer::new(data) }
+  { buf: ByteBuffer::new(data), }
 }
 
 ///|

@@ -1,5 +1,7 @@
-import { "mizchi/flatbuffers" as @lib, "moonbitlang/x/fs", "moonbitlang/x/sys" }
+import {
+  "mizchi/flatbuffers" @lib,
+  "moonbitlang/x/fs",
+  "moonbitlang/x/sys",
+}
 
-options(
-  "is-main": true,
-)
+pkgtype(kind: "executable")

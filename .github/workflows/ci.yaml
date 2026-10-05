@@ -9,6 +9,9 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        target: [js, wasm, wasm-gc, native]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -19,8 +22,10 @@ jobs:
       - name: Moon update
         run: moon update
       - name: Moon check
-        run: moon check
+        run: moon check --target ${{ matrix.target }}
+      - name: Moon build
+        run: moon build --target ${{ matrix.target }}
       - name: Moon test
-        run: moon test
+        run: moon test --target ${{ matrix.target }}
       - name: Moon fmt check
         run: moon fmt --check

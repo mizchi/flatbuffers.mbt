@@ -90,7 +90,7 @@ pub struct Metadata {
 
 ///|
 pub fn Metadata::new() -> Metadata {
-  { entries: [] }
+  { entries: [], }
 }
 
 ///|
@@ -128,7 +128,7 @@ pub fn Metadata::remove(self : Metadata, key : String) -> Metadata {
       new_entries.push(entry)
     }
   }
-  { entries: new_entries }
+  { entries: new_entries, }
 }
 
 ///|
@@ -155,7 +155,7 @@ pub struct GrpcError {
 
 ///|
 pub fn GrpcError::new(status : GrpcStatus, message : String) -> GrpcError {
-  { status, message, metadata: Metadata::new() }
+  { status, message, metadata: Metadata::new(), }
 }
 
 ///|
@@ -164,11 +164,11 @@ pub fn GrpcError::with_metadata(
   message : String,
   metadata : Metadata,
 ) -> GrpcError {
-  { status, message, metadata }
+  { status, message, metadata, }
 }
 
 ///|
-pub impl Show for GrpcError with output(self, logger) {
+pub impl Show for GrpcError with fn output(self, logger) {
   logger.write_string("GrpcError(")
   logger.write_string(self.status.to_string())
   logger.write_string(", ")
@@ -190,12 +190,12 @@ pub struct CallOptions {
 
 ///|
 pub fn CallOptions::new() -> CallOptions {
-  { timeout_ms: None, metadata: Metadata::new(), compression: false }
+  { timeout_ms: None, metadata: Metadata::new(), compression: false, }
 }
 
 ///|
 pub fn CallOptions::with_timeout(self : CallOptions, ms : Int) -> CallOptions {
-  { ..self, timeout_ms: Some(ms) }
+  { ..self, timeout_ms: Some(ms), }
 }
 
 ///|
@@ -211,7 +211,7 @@ pub fn CallOptions::with_compression(
   self : CallOptions,
   enabled : Bool,
 ) -> CallOptions {
-  { ..self, compression: enabled }
+  { ..self, compression: enabled, }
 }
 
 // =============================================================================
@@ -227,7 +227,7 @@ pub struct FlatBuffersCodec {
 
 ///|
 pub fn FlatBuffersCodec::new() -> FlatBuffersCodec {
-  { content_type: "application/x-flatbuffers" }
+  { content_type: "application/x-flatbuffers", }
 }
 
 ///|
@@ -281,7 +281,7 @@ pub fn MessageFrame::new(
   data : FixedArray[Byte],
   compressed : Bool,
 ) -> MessageFrame {
-  { compressed, length: data.length(), data }
+  { compressed, length: data.length(), data, }
 }
 
 ///|
@@ -321,7 +321,7 @@ pub fn MessageFrame::decode(data : FixedArray[Byte]) -> MessageFrame? {
   for i = 0; i < length; i = i + 1 {
     msg_data[i] = data[5 + i]
   }
-  Some({ compressed, length, data: msg_data })
+  Some({ compressed, length, data: msg_data, })
 }
 
 // =============================================================================
@@ -354,7 +354,7 @@ pub fn MethodDescriptor::new(
   method_type : MethodType,
 ) -> MethodDescriptor {
   let full_path = "/" + service_name + "/" + method_name
-  { service_name, method_name, method_type, full_path }
+  { service_name, method_name, method_type, full_path, }
 }
 
 // =============================================================================
@@ -370,7 +370,7 @@ pub struct ServiceDescriptor {
 
 ///|
 pub fn ServiceDescriptor::new(name : String) -> ServiceDescriptor {
-  { name, methods: [] }
+  { name, methods: [], }
 }
 
 ///|
@@ -441,7 +441,7 @@ pub fn ServerContext::with_deadline(
   self : ServerContext,
   deadline : Int64,
 ) -> ServerContext {
-  { ..self, deadline: Some(deadline) }
+  { ..self, deadline: Some(deadline), }
 }
 
 ///|
@@ -459,7 +459,6 @@ pub fn ServerContext::set_header(
   value : String,
 ) -> Unit {
   let _ = self.response_headers.add(key, value)
-
 }
 
 ///|
@@ -469,7 +468,6 @@ pub fn ServerContext::set_trailer(
   value : String,
 ) -> Unit {
   let _ = self.response_trailers.add(key, value)
-
 }
 
 ///|
@@ -545,7 +543,7 @@ pub struct ServerStream[T] {
 
 ///|
 pub fn[T] ServerStream::new(read_fn : () -> T?) -> ServerStream[T] {
-  { read_fn, done: false }
+  { read_fn, done: false, }
 }
 
 ///|
@@ -578,7 +576,7 @@ pub fn[T] ClientStream::new(
   write_fn : (T) -> Bool,
   close_fn : () -> Unit,
 ) -> ClientStream[T] {
-  { write_fn, close_fn, closed: false }
+  { write_fn, close_fn, closed: false, }
 }
 
 ///|
@@ -621,7 +619,7 @@ pub struct Channel {
 
 ///|
 pub fn Channel::new(target : String) -> Channel {
-  { target, state: Idle, codec: FlatBuffersCodec::new() }
+  { target, state: Idle, codec: FlatBuffersCodec::new(), }
 }
 
 ///|
@@ -664,7 +662,7 @@ pub fn ClientInterceptor::new(
   on_request : (ClientContext, FixedArray[Byte]) -> FixedArray[Byte],
   on_response : (ClientContext, FixedArray[Byte]) -> FixedArray[Byte],
 ) -> ClientInterceptor {
-  { on_request, on_response }
+  { on_request, on_response, }
 }
 
 ///|
@@ -681,7 +679,7 @@ pub fn ServerInterceptor::new(
   on_request : (ServerContext, FixedArray[Byte]) -> FixedArray[Byte],
   on_response : (ServerContext, FixedArray[Byte]) -> FixedArray[Byte],
 ) -> ServerInterceptor {
-  { on_request, on_response }
+  { on_request, on_response, }
 }
 
 // =============================================================================
@@ -715,7 +713,7 @@ pub struct HealthService {
 
 ///|
 pub fn HealthService::new() -> HealthService {
-  { status_map: [] }
+  { status_map: [], }
 }
 
 ///|
@@ -761,7 +759,6 @@ pub fn HealthService::clear_status(
   // Cannot reassign self.status_map, so clear and repopulate
   while self.status_map.length() > 0 {
     let _ = self.status_map.pop()
-
   }
   for entry in new_map {
     self.status_map.push(entry)
@@ -780,7 +777,7 @@ pub struct ReflectionService {
 
 ///|
 pub fn ReflectionService::new() -> ReflectionService {
-  { services: [] }
+  { services: [], }
 }
 
 ///|
